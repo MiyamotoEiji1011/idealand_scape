@@ -19,6 +19,8 @@ if st.button("Login & Fetch Map"):
             dataset = AtlasDataset(map_name)
             map_obj = dataset.maps[0]
             df_topics = map_obj.topics.df
+            df_metadata = map_obj.topics.metadata
+            df_data = map_obj.data.df
 
             st.success("✅ Login & Fetch Success!")
 
