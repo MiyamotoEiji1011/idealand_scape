@@ -1,20 +1,57 @@
 import streamlit as st
-from PIL import Image
-import numpy as np
-import cv2
+import requests
+import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+import json
 
-st.title("Image Converter")
-  
-uploaded_file = st.file_uploader('Upload your image file.')
-  
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    image = np.array(image)
+st.title("🔍 Nomic Dataset → Google Sheets Exporter")
 
-    st.subheader('Uploaded image')
-    st.image(image)
+# === 入力フォーム ===
+token = st.text_input("🔑 Nomic API Token", type="password")
+dataset_name = st.text_input("📦 Dataset name (例: chizai-capcom-from-500)")
 
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+if st.button("🚀 データを取得してスプレッドシートに出力"):
+    if not token or not dataset_name:
+        st.error("トークンとデータセット名を入力してください！")
+    else:
+        try:
+            with st.spinner("Nomic APIからデータを取得中..."):
+                url = f"https://api.atlas.nomic.ai/v1/dataset/{dataset_name}"
+                headers = {"Authorization": f"Bearer {token}"}
+                res = requests.get(url, headers=headers)
 
-    st.subheader('Converted image')
-    st.image(gray_image)
+                if res.status_code != 200:
+                    st.error(f"APIエラー: {res.status_code}")
+                    st.stop()
+
+                data = res.json()
+                df = pd.json_normalize(data)
+
+            # === Google Sheetsに書き込み ===
+            st.info("Googleスプレッドシートに書き込み中...")
+
+            creds_dict = st.secrets["gcp_service_account"]
+            creds = Credentials.from_service_account_info(
+                creds_dict,
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+
+            client = gspread.authorize(creds)
+
+            sheet_title = f"NomicExport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            spreadsheet = client.create(sheet_title)
+            sheet = spreadsheet.sheet1
+
+            # DataFrame → Sheet
+            sheet.update([df.columns.values.tolist()] + df.values.tolist())
+
+            # 公開設定
+            spreadsheet.share(None, perm_type="anyone", role="reader")
+
+            st.success("✅ スプレッドシートを作成しました！")
+            st.write(f"[🔗 スプレッドシートを開く]({spreadsheet.url})")
+
+        except Exception as e:
+            st.error(f"エラーが発生しました: {e}")
