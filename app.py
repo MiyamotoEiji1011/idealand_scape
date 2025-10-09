@@ -2,7 +2,7 @@ import streamlit as st
 from nomic import AtlasDataset
 import nomic
 
-st.title("🔗 Nomic Atlas Login & Map Fetcher")
+st.title("Nomic Atlas")
 
 # --- 入力欄 ---
 token = st.text_input("Nomic Atlas Token", type="password")
@@ -22,7 +22,7 @@ if st.button("Login & Fetch Map"):
 
             st.success("✅ Login & Fetch Success!")
 
-            st.markdown("### 📊 トピックデータ（スクロール可能）")
+            st.markdown("### トピックデータ")
             st.dataframe(
                 df_topics,
                 use_container_width=True,  # 横幅を最大化
