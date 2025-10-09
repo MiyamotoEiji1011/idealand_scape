@@ -22,11 +22,11 @@ if st.button("Login & Fetch Map"):
 
             st.success("✅ Login & Fetch Success!")
 
-            st.markdown("###Data")
+            st.markdown("### Data")
             st.dataframe(
                 df_data,
-                use_container_width=True,  # 横幅を最大化
-                height=600  # 表の高さを固定（スクロールバーが出る）
+                width="stretch",  # ✅ 修正版
+                height=600
             )
 
         except Exception as e:
