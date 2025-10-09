@@ -3,7 +3,7 @@ from nomic import AtlasDataset
 import nomic
 
 st.set_page_config(page_title="Nomic Atlas Viewer", layout="wide")
-st.title("🔍 Nomic Atlas Data Viewer")
+st.title("Nomic Atlas")
 
 # --- 入力欄 ---
 token = st.text_input("Nomic Atlas Token", type="password")
