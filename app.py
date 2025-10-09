@@ -18,13 +18,13 @@ if st.button("Login & Fetch Map"):
             nomic.cli.login(token=token, domain=domain)
             dataset = AtlasDataset(map_name)
             map_obj = dataset.maps[0]
-            df_topics = map_obj.topics.df
+            df_data = map_obj.data.df
 
             st.success("✅ Login & Fetch Success!")
 
             st.markdown("### トピックデータ")
             st.dataframe(
-                df_topics,
+                df_data,
                 use_container_width=True,  # 横幅を最大化
                 height=600  # 表の高さを固定（スクロールバーが出る）
             )
