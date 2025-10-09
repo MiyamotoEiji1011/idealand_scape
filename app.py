@@ -18,7 +18,7 @@ if st.button("Login & Fetch Map"):
             nomic.cli.login(token=token, domain=domain)
             dataset = AtlasDataset(map_name)
             map_obj = dataset.maps[0]
-            df_data = map_obj.data.df
+            df_data = map_obj.topics.df
 
             st.success("✅ Login & Fetch Success!")
 
