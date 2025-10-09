@@ -21,7 +21,13 @@ if st.button("Login & Fetch Map"):
             df_topics = map_obj.topics.df
 
             st.success("✅ Login & Fetch Success!")
-            st.dataframe(df_topics.head())  # データの一部を表示
+
+            st.markdown("### 📊 トピックデータ（スクロール可能）")
+            st.dataframe(
+                df_topics,
+                use_container_width=True,  # 横幅を最大化
+                height=600  # 表の高さを固定（スクロールバーが出る）
+            )
 
         except Exception as e:
             st.error(f"❌ エラーが発生しました: {e}")
