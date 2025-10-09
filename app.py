@@ -24,8 +24,8 @@ if st.button("Login & Fetch Map"):
 
             st.markdown("### Data")
             st.dataframe(
-                df_data,
-                width="stretch",  # ✅ 修正版
+                df_data.head(500),
+                width="stretch",
                 height=600
             )
 
