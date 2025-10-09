@@ -2,7 +2,7 @@ import streamlit as st
 from nomic import AtlasDataset
 import nomic
 
-st.title("Nomic Atlas Login & Map Fetcher")
+st.title("Demo App v1")
 
 # --- 入力欄 ---
 token = st.text_input("Nomic Atlas Token", type="password")
