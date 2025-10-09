@@ -22,7 +22,7 @@ if st.button("Login & Fetch Map"):
 
             st.success("✅ Login & Fetch Success!")
 
-            st.markdown("### 📊 トピックデータ（スクロール可能）")
+            st.markdown("###Data")
             st.dataframe(
                 df_topics,
                 use_container_width=True,  # 横幅を最大化
