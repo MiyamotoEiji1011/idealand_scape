@@ -66,20 +66,6 @@ except Exception as e:
     st.error(f"❌ Failed to load service account: {e}")
     client = None
 
-# =======================================
-# 3️⃣ Download CSVs for local backup
-# =======================================
-if map_data is not None:
-    st.subheader("💾 Download Raw Data")
-    if st.button("Download metadata CSV"):
-        csv = df_metadata.to_csv(index=False)
-        st.download_button("Download Metadata", csv, file_name="metadata.csv", mime="text/csv")
-    if st.button("Download topics CSV"):
-        csv = df_topics.to_csv(index=False)
-        st.download_button("Download Topics", csv, file_name="topics.csv", mime="text/csv")
-    if st.button("Download data CSV"):
-        csv = df_data.to_csv(index=False)
-        st.download_button("Download Data", csv, file_name="data.csv", mime="text/csv")
 
 # =======================================
 # 4️⃣ Prepare empty DataFrame for Google Sheets
@@ -99,4 +85,24 @@ columns = [
 
 df_master = pd.DataFrame(columns=columns)
 
+st.subheader("📝 Initialize Google Sheet")
+
+if st.button("Clear & Initialize Sheet"):
+    if client is None:
+        st.error("❌ Google client not initialized.")
+    else:
+        try:
+            spreadsheet = client.open_by_key(spreadsheet_id)
+            worksheet = spreadsheet.worksheet(worksheet_name)
+
+            # シートをクリア
+            worksheet.clear()
+
+            # df_master のカラムを書き込む
+            set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
+            st.success("✅ Google Sheet cleared and initialized with column headers!")
+
+        except Exception as e:
+            st.error(f"❌ Failed to initialize Google Sheet: {e}")
 
