@@ -13,16 +13,6 @@ token = st.text_input("API Token", value=default_token, type="password")
 domain = st.text_input("Domain", value="atlas.nomic.ai")
 map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
-# --- Login button ---
-if st.button("Login to Nomic"):
-    if not token:
-        st.error("❌ Please provide your API token.")
-    else:
-        try:
-            nomic.cli.login(token=token, domain=domain)
-            st.success("✅ Successfully logged in to Nomic!")
-        except Exception as e:
-            st.error(f"❌ Login failed: {e}")
 
 # --- Fetch dataset button ---
 if st.button("Fetch Dataset"):
@@ -36,7 +26,6 @@ if st.button("Fetch Dataset"):
             df_topics = map_data.topics.df
 
             st.success("✅ Dataset fetched successfully!")
-            st.dataframe(df_topics.head())
 
         except Exception as e:
             st.error(f"❌ Failed to fetch dataset: {e}")
