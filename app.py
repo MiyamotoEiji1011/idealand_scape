@@ -118,20 +118,28 @@ if st.button("Write Metadata to Sheet"):
             # df_metadata を df_master に反映
             df_metadata = map_data.topics.metadata
 
+            # 既存シートを取得（存在する場合）
+            spreadsheet = client.open_by_key(spreadsheet_id)
+            worksheet = spreadsheet.worksheet(worksheet_name)
+            try:
+                existing_df = pd.DataFrame(worksheet.get_all_records())
+            except Exception:
+                existing_df = pd.DataFrame(columns=df_master.columns)
+
+            # df_master に既存データを反映
+            df_master = existing_df.reindex(columns=df_master.columns)
+
+            # Metadata 列だけ更新
             df_master["depth"] = df_metadata["depth"].astype(str)
             df_master["topic_id"] = df_metadata["topic_id"].astype(str)
             df_master["Nomic Topic: Broad"] = df_metadata["topic_depth_1"].astype(str)
             df_master["Nomic Topic: Medium"] = df_metadata["topic_depth_2"].astype(str)
             df_master["キーワード"] = df_metadata["topic_description"].astype(str)
 
-            # Google シートに書き込む
-            spreadsheet = client.open_by_key(spreadsheet_id)
-            worksheet = spreadsheet.worksheet(worksheet_name)
-
-            worksheet.clear()
+            # 上書きで書き込み
             set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
-            st.success("✅ Metadata successfully written to Google Sheet!")
+            st.success("✅ Metadata successfully updated while preserving existing data!")
 
         except Exception as e:
             st.error(f"❌ Failed to write metadata: {e}")
