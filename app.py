@@ -23,6 +23,7 @@ if st.button("Fetch Dataset"):
             nomic.cli.login(token=token, domain=domain)
             dataset = AtlasDataset('chizai-capcom-from-500')
             map = dataset.maps[0]
+            df_topics = map.topics.df
 
             st.success("✅ Dataset fetched successfully!")
 
