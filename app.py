@@ -7,6 +7,17 @@ import json
 
 st.title("Google Drive & Sheets Demo")
 
+# ここを追加！
+def creds_to_dict(creds):
+    return {
+        "token": creds.token,
+        "refresh_token": creds.refresh_token,
+        "token_uri": creds.token_uri,
+        "client_id": creds.client_id,
+        "client_secret": creds.client_secret,
+        "scopes": creds.scopes
+    }
+
 # --- Secretsから認証情報を取得 ---
 client_id = st.secrets["google_oauth"]["client_id"]
 client_secret = st.secrets["google_oauth"]["client_secret"]
@@ -29,33 +40,3 @@ flow = Flow.from_client_config(
     ],
     redirect_uri=redirect_uri,
 )
-
-# --- 認可URL生成 ---
-if "credentials" not in st.session_state:
-    auth_url, _ = flow.authorization_url(prompt="consent")
-    st.write("🔐 Google認証を行ってください:")
-    st.markdown(f"[認証する]({auth_url})")
-else:
-    st.success("✅ 認証済みです！")
-
-# --- 認可コード処理 ---
-code = st.experimental_get_query_params().get("code")
-if code and "credentials" not in st.session_state:
-    flow.fetch_token(code=code[0])
-    creds = flow.credentials
-    st.session_state["credentials"] = creds_to_dict(creds)
-    st.rerun()
-
-# --- スプレッドシート作成 ---
-if "credentials" in st.session_state:
-    creds = Credentials.from_authorized_user_info(st.session_state["credentials"])
-    drive_service = build("drive", "v3", credentials=creds)
-    sheets_service = build("sheets", "v4", credentials=creds)
-
-    if st.button("📄 スプレッドシートを作成"):
-        file_metadata = {
-            "name": "自動作成テスト",
-            "mimeType": "application/vnd.google-apps.spreadsheet",
-        }
-        sheet = drive_service.files().create(body=file_metadata, fields="id").execute()
-        st.success(f"✨ 作成しました！ → ID: {sheet['id']}")
