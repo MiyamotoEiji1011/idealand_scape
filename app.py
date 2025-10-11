@@ -99,23 +99,4 @@ columns = [
 
 df_master = pd.DataFrame(columns=columns)
 
-# =======================================
-# 5️⃣ Write empty DataFrame to Google Sheets
-# =======================================
-if st.button("Write Empty DataFrame to Sheets"):
-    if client is None:
-        st.error("❌ Google client not initialized.")
-    elif map_data is None:
-        st.error("⚠️ No dataset loaded yet.")
-    else:
-        try:
-            spreadsheet = client.open_by_key(spreadsheet_id)
-            worksheet = spreadsheet.worksheet(worksheet_name)
 
-            worksheet.clear()
-            set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
-
-            st.success("✅ Empty DataFrame successfully written to Google Sheets!")
-
-        except Exception as e:
-            st.error(f"❌ Failed to write to Google Sheets: {e}")
