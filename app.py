@@ -1,82 +1,53 @@
 import streamlit as st
-from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import os
+from googleapiclient.http import MediaFileUpload
+import tempfile
+import json
 
-st.title("📄 Google Drive スプレッドシート自動作成")
+st.title("Google Drive CSVアップロードアプリ 🌸")
 
-# -------------------------
-# 関数定義
-# -------------------------
-def creds_to_dict(creds):
-    """Credentialsオブジェクトを辞書に変換"""
-    return {
-        "token": creds.token,
-        "refresh_token": creds.refresh_token,
-        "token_uri": creds.token_uri,
-        "client_id": creds.client_id,
-        "client_secret": creds.client_secret,
-        "scopes": creds.scopes
+# --- 1. サービスアカウント情報をStreamlit Secretsから読み込む ---
+# Secrets.tomlに以下のように保存しておく
+# [google_service_account]
+# value = """ {...JSON内容...} """
+service_account_info = json.loads(st.secrets["google_service_account"]["value"])
+
+creds = service_account.Credentials.from_service_account_info(
+    service_account_info,
+    scopes=['https://www.googleapis.com/auth/drive']
+)
+
+drive_service = build('drive', 'v3', credentials=creds)
+
+# --- 2. ファイルアップロードUI ---
+uploaded_file = st.file_uploader("アップロードするCSVファイルを選択してください", type=["csv"])
+
+# --- 3. アップロード先フォルダID入力 ---
+folder_id = st.text_input("アップロード先フォルダID", value="")  # 例: 共有フォルダID
+
+# --- 4. アップロード処理 ---
+if uploaded_file and folder_id:
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        tmp_file.write(uploaded_file.read())
+        tmp_file_path = tmp_file.name
+
+    file_metadata = {
+        'name': uploaded_file.name,
+        'parents': [folder_id]
     }
 
-def get_credentials():
-    """OAuth認証を行いCredentialsを取得"""
-    if "credentials" in st.session_state:
-        creds = Credentials(**st.session_state["credentials"])
-        return creds
+    media = MediaFileUpload(tmp_file_path, mimetype='application/csv')
+    try:
+        file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id',
+            supportsAllDrives=True  # 共有ドライブにも対応
+        ).execute()
+        st.success(f"アップロード成功！ファイルID: {file.get('id')}")
+    except Exception as e:
+        st.error(f"アップロード中にエラーが発生しました: {e}")
 
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": st.secrets["google_oauth"]["client_id"],
-                "client_secret": st.secrets["google_oauth"]["client_secret"],
-                "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=[
-            "https://www.googleapis.com/auth/drive.file",
-            "https://www.googleapis.com/auth/spreadsheets"
-        ],
-        redirect_uri=st.secrets["google_oauth"]["redirect_uri"],
-    )
-
-    # 認証URL生成
-    auth_url, _ = flow.authorization_url(prompt="consent")
-    st.write("🔐 Googleアカウント認証を行ってください:")
-    st.markdown(f"[認証する]({auth_url})")
-
-    # 認可コード取得
-    code = st.experimental_get_query_params().get("code")
-    if code:
-        flow.fetch_token(code=code[0])
-        creds = flow.credentials
-        st.session_state["credentials"] = creds_to_dict(creds)
-        st.experimental_rerun()
-
-    return None
-
-# -------------------------
-# メイン処理
-# -------------------------
-creds = get_credentials()
-if creds:
-    drive_service = build("drive", "v3", credentials=creds)
-
-    # UI
-    folder_id = st.text_input("📁 作成先フォルダID（空欄ならマイドライブ）", "")
-    sheet_name = st.text_input("📄 作成するスプレッドシート名", "MyAutoSheet")
-
-    if st.button("作成！"):
-        file_metadata = {
-            "name": sheet_name,
-            "mimeType": "application/vnd.google-apps.spreadsheet",
-        }
-        if folder_id:
-            file_metadata["parents"] = [folder_id]
-
-        file = drive_service.files().create(body=file_metadata, fields="id, name").execute()
-        st.success(f"✨ 作成しました！: {file['name']}")
-        st.markdown(f"[開く ▶️](https://docs.google.com/spreadsheets/d/{file['id']}/edit)")
+# --- 5. 注意 ---
+st.info("⚠️ フォルダIDはDrive上で対象フォルダを開いたときのURL末尾のIDを使用してください。")
