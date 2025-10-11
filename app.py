@@ -106,3 +106,33 @@ if st.button("Clear & Initialize Sheet"):
         except Exception as e:
             st.error(f"❌ Failed to initialize Google Sheet: {e}")
 
+st.subheader("📤 Write Metadata to Google Sheet")
+
+if st.button("Write Metadata to Sheet"):
+    if client is None:
+        st.error("❌ Google client not initialized.")
+    elif map_data is None:
+        st.error("⚠️ No dataset loaded yet.")
+    else:
+        try:
+            # df_metadata を df_master に反映
+            df_metadata = map_data.topics.metadata
+
+            df_master["depth"] = df_metadata["depth"].astype(str)
+            df_master["topic_id"] = df_metadata["topic_id"].astype(str)
+            df_master["Nomic Topic: Broad"] = df_metadata["topic_depth_1"].astype(str)
+            df_master["Nomic Topic: Medium"] = df_metadata["topic_depth_2"].astype(str)
+            df_master["キーワード"] = df_metadata["topic_description"].astype(str)
+
+            # Google シートに書き込む
+            spreadsheet = client.open_by_key(spreadsheet_id)
+            worksheet = spreadsheet.worksheet(worksheet_name)
+
+            worksheet.clear()
+            set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
+            st.success("✅ Metadata successfully written to Google Sheet!")
+
+        except Exception as e:
+            st.error(f"❌ Failed to write metadata: {e}")
+
