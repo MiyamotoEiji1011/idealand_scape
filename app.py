@@ -1,9 +1,9 @@
 import streamlit as st
 import gspread
 import pandas as pd
+import os
 from google.oauth2.service_account import Credentials
 from nomic import AtlasDataset
-import nomic.cli
 import json
 
 # ======================================
@@ -15,15 +15,11 @@ DOMAIN = st.secrets["nomic"]["domain"]
 
 SERVICE_ACCOUNT_INFO = json.loads(SERVICE_ACCOUNT)
 
-# ======================================
-# ⚙️ 固定設定
-# ======================================
 MAP_NAME = "chizai-capcom-from-500"
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1iPnaVVdUSC5BfNdxPVRSZAOiaCYWcMDYQWs5ps3AJsk/edit?gid=0#gid=0"
 
 st.title("🧭 Nomic → Googleスプレッドシート 反映デモ")
 st.write(f"対象マップ: `{MAP_NAME}`")
-st.write(f"ドメイン: `{DOMAIN}`")
 
 # ======================================
 # 🔑 Google認証
@@ -36,15 +32,16 @@ except Exception as e:
     st.error(f"Google認証エラー: {e}")
 
 # ======================================
+# 🌐 Nomic API設定（CLI経由ではなく環境変数で）
+# ======================================
+os.environ["NOMIC_API_KEY"] = NOMIC_TOKEN
+os.environ["NOMIC_DOMAIN"] = DOMAIN
+
+# ======================================
 # 🗺️ Nomic データ取得
 # ======================================
 if st.button("🔄 Nomicデータを取得"):
     try:
-        # ログイン処理
-        nomic.cli.login(token=NOMIC_TOKEN, domain=DOMAIN)
-        st.info("🔐 Nomicログイン成功！")
-
-        # データセット取得
         dataset = AtlasDataset(MAP_NAME)
         map = dataset.maps[0]
         df_topics = map.topics.df
