@@ -20,8 +20,11 @@ token = st.text_input("API Token", value=default_token, type="password")
 domain = st.text_input("Domain", value="atlas.nomic.ai")
 map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
-df_data = None
+# セッションステートに df_data がなければ初期化
+if "df_data" not in st.session_state:
+    st.session_state.df_data = None
 
+# --- Fetch Dataset ---
 if st.button("Fetch Dataset"):
     if not token:
         st.error("❌ Please provide API token first.")
@@ -31,9 +34,8 @@ if st.button("Fetch Dataset"):
             dataset = AtlasDataset(map_name)
             map_data = dataset.maps[0]
 
-            df_data = map_data.data.df
-
-            st.success(f"✅ Dataset fetched successfully! Rows: {len(df_data)}")
+            st.session_state.df_data = map_data.data.df
+            st.success(f"✅ Dataset fetched successfully! Rows: {len(st.session_state.df_data)}")
 
         except Exception as e:
             st.error(f"❌ Failed to fetch dataset: {e}")
@@ -65,6 +67,7 @@ except Exception as e:
 # 3️⃣ Write to Google Sheets
 # =======================================
 if st.button("Write to Google Sheets"):
+    df_data = st.session_state.df_data  # セッションステートから取得
     if client is None:
         st.error("❌ Google client not initialized.")
     elif df_data is None or df_data.empty:
