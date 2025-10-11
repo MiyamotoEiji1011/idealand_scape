@@ -17,15 +17,20 @@ map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 # --- Fetch dataset button ---
 if st.button("Fetch Dataset"):
     if not token:
-        st.error("❌ Please login first.")
+        st.error("❌ Please provide API token first.")
     else:
         try:
-            nomic.cli.login(token=token, domain=domain)
-            dataset = AtlasDataset('chizai-capcom-from-500')
-            map = dataset.maps[0]
-            df_topics = map.topics.df
+            nomic.login(token=token, domain=domain)
+            dataset = AtlasDataset(map_name)
+            map_data = dataset.maps[0]
 
-            st.success("✅ Dataset fetched successfully!")
+            # ✅ Check if topics exist
+            if hasattr(map_data, "topics") and map_data.topics is not None:
+                df_topics = map_data.topics.df
+                st.success("✅ Dataset and topics fetched successfully!")
+                st.dataframe(df_topics.head())
+            else:
+                st.warning("⚠️ Topics data is not available for this map yet.")
 
         except Exception as e:
             st.error(f"❌ Failed to fetch dataset: {e}")
