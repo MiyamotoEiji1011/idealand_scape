@@ -24,13 +24,7 @@ if st.button("Fetch Dataset"):
             dataset = AtlasDataset(map_name)
             map_data = dataset.maps[0]
 
-            # ✅ Check if topics exist
-            if hasattr(map_data, "topics") and map_data.topics is not None:
-                df_topics = map_data.topics.df
-                st.success("✅ Dataset and topics fetched successfully!")
-                st.dataframe(df_topics.head())
-            else:
-                st.warning("⚠️ Topics data is not available for this map yet.")
+            df_data = map_data.data.df
 
         except Exception as e:
             st.error(f"❌ Failed to fetch dataset: {e}")
