@@ -2,7 +2,8 @@ import json
 import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseUpload
+import io
 
 # ------------------------
 # サービスアカウント認証
@@ -31,26 +32,28 @@ if st.button("フォルダ作成 & アップロード"):
     }
     folder = drive_service.files().create(
         body=folder_metadata,
-        fields="id"
+        fields="id",
+        supportsAllDrives=True  # 共有ドライブ対応
     ).execute()
     folder_id = folder.get("id")
     st.success(f"フォルダ作成完了！ID: {folder_id}")
 
     # 2. ファイルアップロード
     if file_to_upload is not None:
-        # Streamlit UploadedFile から直接アップロード
-        media = MediaFileUpload(file_to_upload.name, mimetype=file_to_upload.type)
+        # UploadedFile をバイナリで読み込む
+        file_bytes = file_to_upload.read()
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=file_to_upload.type, resumable=True)
+
         file_metadata = {
             "name": file_to_upload.name,
             "parents": [folder_id]
         }
-    
+
         uploaded_file = drive_service.files().create(
             body=file_metadata,
             media_body=media,
             fields="id",
-            supportsAllDrives=True  # ← ここを忘れずに
+            supportsAllDrives=True  # ← ここも忘れずに
         ).execute()
-    
-        st.success(f"ファイルアップロード完了！ID: {uploaded_file.get('id')}")
 
+        st.success(f"ファイルアップロード完了！ID: {uploaded_file.get('id')}")
