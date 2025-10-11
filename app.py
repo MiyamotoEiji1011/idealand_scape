@@ -7,7 +7,7 @@ import json
 import pandas as pd
 import math
 
-st.title("Nomic Atlas → Google Sheets Sync Demo (Safe for Large Data)")
+st.title("Nomic Atlas → Google Sheets Sync Demo (Session Safe)")
 
 # =======================================
 # 1️⃣ Nomic Settings
@@ -19,7 +19,9 @@ token = st.text_input("API Token", value=default_token, type="password")
 domain = st.text_input("Domain", value="atlas.nomic.ai")
 map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
-df_data = None
+# --- セッション状態で df_data を保持 ---
+if "df_data" not in st.session_state:
+    st.session_state.df_data = None
 
 if st.button("Fetch Dataset"):
     if not token:
@@ -30,10 +32,9 @@ if st.button("Fetch Dataset"):
             dataset = AtlasDataset(map_name)
             map_data = dataset.maps[0]
 
-            # 分割して取得
-            df_data = map_data.data.df
-            st.success(f"✅ Dataset fetched successfully! Rows: {len(df_data)}")
+            st.session_state.df_data = map_data.data.df
 
+            st.success(f"✅ Dataset fetched successfully! Rows: {len(st.session_state.df_data)}")
         except Exception as e:
             st.error(f"❌ Failed to fetch dataset: {e}")
 
@@ -63,32 +64,27 @@ except Exception as e:
 if st.button("Write to Google Sheets"):
     if client is None:
         st.error("❌ Google client not initialized.")
-    elif df_data is None or df_data.empty:
+    elif st.session_state.df_data is None or st.session_state.df_data.empty:
         st.error("⚠️ No dataset loaded to write.")
     else:
         try:
-            spreadsheet = client.open_by_key(spreadsheet_id)
-            worksheet = spreadsheet.worksheet(worksheet_name)
+            worksheet = client.open_by_key(spreadsheet_id).worksheet(worksheet_name)
             worksheet.clear()  # 既存データ削除
 
-            # chunk size を指定して分割書き込み
-            chunk_size = 100  # 1回に書き込む行数
+            df_data = st.session_state.df_data
+            chunk_size = 100
             total_rows = len(df_data)
             num_chunks = math.ceil(total_rows / chunk_size)
 
             progress_bar = st.progress(0)
-
-            # 最初にヘッダー書き込み
-            worksheet.update([df_data.columns.values.tolist()])
+            worksheet.update([df_data.columns.values.tolist()])  # ヘッダー書き込み
 
             for i in range(num_chunks):
                 start = i * chunk_size
                 end = min((i + 1) * chunk_size, total_rows)
-                chunk_values = df_data.iloc[start:end].values.tolist()
-                worksheet.append_rows(chunk_values)
+                worksheet.append_rows(df_data.iloc[start:end].values.tolist())
                 progress_bar.progress((i + 1) / num_chunks)
 
             st.success(f"✅ Data successfully written! Total rows: {total_rows}")
-
         except Exception as e:
             st.error(f"❌ Failed to write to Google Sheets: {e}")
