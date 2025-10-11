@@ -38,20 +38,19 @@ if st.button("フォルダ作成 & アップロード"):
 
     # 2. ファイルアップロード
     if file_to_upload is not None:
-        # Streamlit の UploadedFile を一時保存
-        with open(file_to_upload.name, "wb") as f:
-            f.write(file_to_upload.getbuffer())
-        
-        media = MediaFileUpload(file_to_upload.name)
+        # Streamlit UploadedFile から直接アップロード
+        media = MediaFileUpload(file_to_upload.name, mimetype=file_to_upload.type)
         file_metadata = {
             "name": file_to_upload.name,
-            "parents": [folder_id]  # 作成したフォルダにアップロード
+            "parents": [folder_id]
         }
-
+    
         uploaded_file = drive_service.files().create(
             body=file_metadata,
             media_body=media,
-            fields="id"
+            fields="id",
+            supportsAllDrives=True  # ← ここを忘れずに
         ).execute()
-
+    
         st.success(f"ファイルアップロード完了！ID: {uploaded_file.get('id')}")
+
