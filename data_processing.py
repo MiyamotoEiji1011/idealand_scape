@@ -68,6 +68,65 @@ def prepare_master_dataframe(map_data):
             df_master.at[idx, "平均スコア"] = round(avg_score, 2)
         else:
             df_master.at[idx, "平均スコア"] = 0
+    
+    df_master["新規性平均スコア"] = 0.0
+    for idx, row in df_master.iterrows():
+        depth = row["depth"]
 
+        if depth == "1":
+            topic_name = row["Nomic Topic: Broad"]
+            rows = df_topics[df_topics["topic_depth_1"] == topic_name]["row_number"]
+        elif depth == "2":
+            topic_name = row["Nomic Topic: Medium"]
+            rows = df_topics[df_topics["topic_depth_2"] == topic_name]["row_number"]
+        else:
+            rows = pd.Series(dtype=int)
+
+        if not rows.empty:
+            df_sub = df_data[df_data["row_number"].isin(rows)]
+            avg_score = df_sub["novelty_score"].mean()
+            df_master.at[idx, "新規性平均スコア"] = round(avg_score, 2)
+        else:
+            df_master.at[idx, "新規性平均スコア"] = 0.0
+
+    df_master["市場性平均スコア"] = 0.0
+    for idx, row in df_master.iterrows():
+        depth = row["depth"]
+
+        if depth == "1":
+            topic_name = row["Nomic Topic: Broad"]
+            rows = df_topics[df_topics["topic_depth_1"] == topic_name]["row_number"]
+        elif depth == "2":
+            topic_name = row["Nomic Topic: Medium"]
+            rows = df_topics[df_topics["topic_depth_2"] == topic_name]["row_number"]
+        else:
+            rows = pd.Series(dtype=int)
+
+        if not rows.empty:
+            df_sub = df_data[df_data["row_number"].isin(rows)]
+            avg_score = df_sub["marketability_score"].mean()
+            df_master.at[idx, "市場性平均スコア"] = round(avg_score, 2)
+        else:
+            df_master.at[idx, "市場性平均スコア"] = 0.0
+
+    df_master["実現性平均スコア"] = 0.0
+    for idx, row in df_master.iterrows():
+        depth = row["depth"]
+
+        if depth == "1":
+            topic_name = row["Nomic Topic: Broad"]
+            rows = df_topics[df_topics["topic_depth_1"] == topic_name]["row_number"]
+        elif depth == "2":
+            topic_name = row["Nomic Topic: Medium"]
+            rows = df_topics[df_topics["topic_depth_2"] == topic_name]["row_number"]
+        else:
+            rows = pd.Series(dtype=int)
+
+        if not rows.empty:
+            df_sub = df_data[df_data["row_number"].isin(rows)]
+            avg_score = df_sub["feasibility_score"].mean()
+            df_master.at[idx, "実現性平均スコア"] = round(avg_score, 2)
+        else:
+            df_master.at[idx, "実現性平均スコア"] = 0.0
 
     return df_master
