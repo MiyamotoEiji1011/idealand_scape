@@ -57,10 +57,11 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         spreadsheet = client.open_by_key(spreadsheet_id)
         worksheet = spreadsheet.worksheet(worksheet_name)
 
-        # メタデータの抽出
+        # ===== メタデータ抽出 =====
         df_metadata = map_data.topics.metadata
+        df_topics = map_data.topics.df  # ← トピックデータ本体も利用する
 
-        # カラム構造を定義
+        # ===== カラム構造を定義 =====
         columns = [
             "depth", "topic_id", "Nomic Topic: Broad", "Nomic Topic: Medium", "キーワード",
             "アイデア数", "平均スコア", "新規性平均スコア", "市場性平均スコア", "実現性平均スコア",
@@ -74,7 +75,7 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
             "アイデア名", "Summary", "カテゴリー", "合計スコア", "新規性スコア", "市場性スコア", "実現性スコア"
         ]
 
-        # データフレームを作成
+        # ===== データ整形 =====
         df_master = pd.DataFrame(columns=columns)
         df_master["depth"] = df_metadata["depth"].astype(str)
         df_master["topic_id"] = df_metadata["topic_id"].astype(str)
@@ -82,28 +83,45 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         df_master["Nomic Topic: Medium"] = df_metadata["topic_depth_2"].astype(str)
         df_master["キーワード"] = df_metadata["topic_description"].astype(str)
 
-        # シートに書き込み
+        # ===== 追加：アイデア数カウント =====
+        df_master["アイデア数"] = 0
+        for idx, row in df_master.iterrows():
+            depth = row["depth"]
+            topic_depth_1 = row["Nomic Topic: Broad"]
+            topic_depth_2 = row["Nomic Topic: Medium"]
+
+            if depth == "1":
+                count = (df_topics["topic_depth_1"] == topic_depth_1).sum()
+            elif depth == "2":
+                count = (df_topics["topic_depth_2"] == topic_depth_2).sum()
+            else:
+                count = 0
+
+            df_master.at[idx, "アイデア数"] = count
+
+        # ===== シート書き込み =====
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
         st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
 
 
 # =========================================================
-# treamlit UI構築
+# 🏗️ Streamlit UI構築
 # =========================================================
 st.title("Nomic Atlas → Google Sheets Sync Demo (Data Hold & Export)")
 
 # --- Nomic Atlas Settings ---
-st.subheader("Nomic Atlas Settings")
+st.subheader("🌸 Nomic Atlas Settings")
 default_token = st.secrets.get("NOMIC_TOKEN", "")
 token = st.text_input("API Token", value=default_token, type="password")
 domain = st.text_input("Domain", value="atlas.nomic.ai")
 map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
 # --- Google Sheets Settings ---
-st.subheader("Google Sheets Settings")
+st.subheader("📗 Google Sheets Settings")
 spreadsheet_id = st.text_input("Spreadsheet ID", value="1iPnaVVdUSC5BfNdxPVRSZAOiaCYWcMDYQWs5ps3AJsk")
 worksheet_name = st.text_input("Worksheet Name", value="シート1")
 
