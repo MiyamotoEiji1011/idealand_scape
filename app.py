@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-from modules.google_utils import init_gspread, clear_and_init_sheet, write_metadata_to_sheet
-from modules.nomic_utils import fetch_nomic_dataset
-from modules.data_utils import create_master_dataframe
+from google_utils import init_gspread, clear_and_init_sheet, write_metadata_to_sheet
+from nomic_utils import fetch_nomic_dataset
+from data_utils import create_master_dataframe
 
 st.title("Nomic Atlas → Google Sheets Sync Demo (Modular Version)")
 
