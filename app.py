@@ -103,29 +103,29 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 st.title("Nomic Atlas → Google Sheets Sync Demo (Data Hold & Export)")
 
 # --- Nomic Atlas Settings ---
-st.subheader("🌸 Nomic Atlas Settings")
+st.subheader("Nomic Atlas Settings")
 default_token = st.secrets.get("NOMIC_TOKEN", "")
 token = st.text_input("API Token", value=default_token, type="password")
 domain = st.text_input("Domain", value="atlas.nomic.ai")
 map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
 # --- Google Sheets Settings ---
-st.subheader("📗 Google Sheets Settings")
+st.subheader("Google Sheets Settings")
 spreadsheet_id = st.text_input("Spreadsheet ID", value="1iPnaVVdUSC5BfNdxPVRSZAOiaCYWcMDYQWs5ps3AJsk")
 worksheet_name = st.text_input("Worksheet Name", value="シート1")
 
 # --- Buttons ---
-if st.button("🔍 Fetch Nomic Dataset"):
+if st.button("Fetch Nomic Dataset"):
     map_data = fetch_nomic_dataset(token, domain, map_name)
     if map_data:
         st.session_state.map_data = map_data
 
-if st.button("🔑 Google Login"):
+if st.button("Google Login"):
     gclient = google_login()
     if gclient:
         st.session_state.gclient = gclient
 
-if st.button("📤 Create / Update Google Sheet"):
+if st.button("Create / Update Google Sheet"):
     if "map_data" not in st.session_state:
         st.error("❌ Please fetch the Nomic dataset first.")
     elif "gclient" not in st.session_state:
