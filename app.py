@@ -6,7 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 import pandas as pd
 from gspread_dataframe import set_with_dataframe
-from gspread_formatting import CellFormat, format_cell_range, textFormat
+from gspread_formatting import CellFormat, format_cell_range, TextFormat
 from data_processing import prepare_master_dataframe
 
 # =========================================================
@@ -53,14 +53,24 @@ def format_sheet_header_bold(worksheet, df):
     if df.empty:
         return
     
-    # ヘッダーの範囲を取得（A1から最後のカラム1行目まで）
-    last_col_letter = chr(64 + len(df.columns))  # A=65
+    # ヘッダー行は1行目だけ
+    num_cols = len(df.columns)
+    
+    # A～Zの範囲まで対応
+    if num_cols <= 26:
+        last_col_letter = chr(64 + num_cols)  # A=65
+    else:
+        # 27列以上の場合はAA, AB…に対応
+        last_col_letter = ""
+        n = num_cols
+        while n > 0:
+            n, remainder = divmod(n-1, 26)
+            last_col_letter = chr(65 + remainder) + last_col_letter
+
     header_range = f"A1:{last_col_letter}1"
     
-    # フォーマット設定（太文字）
-    header_format = CellFormat(textFormat=textFormat(bold=True))
+    header_format = CellFormat(textFormat=TextFormat(bold=True))
     
-    # 適用
     format_cell_range(worksheet, header_range, header_format)
 
 
