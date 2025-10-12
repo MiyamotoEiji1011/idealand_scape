@@ -4,6 +4,7 @@ def prepare_master_dataframe(map_data):
     """Nomicデータを整形してマスターデータを作成"""
     df_metadata = map_data.topics.metadata
     df_topics = map_data.topics.df
+    df_data = map_data.data.df
 
     columns = [
         "depth", "topic_id", "Nomic Topic: Broad", "Nomic Topic: Medium", "キーワード",
@@ -40,5 +41,33 @@ def prepare_master_dataframe(map_data):
             count = 0
 
         df_master.at[idx, "アイデア数"] = count
+    
+    df_master["平均スコア"] = 0.0
+    for idx, row in df_master.iterrows():
+        depth = row["depth"]
+
+        if depth == "1":
+            topic_name = row["Nomic Topic: Broad"]
+            rows = df_topics[df_topics["topic_depth_1"] == topic_name]["row_number"]
+        elif depth == "2":
+            topic_name = row["Nomic Topic: Medium"]
+            rows = df_topics[df_topics["topic_depth_2"] == topic_name]["row_number"]
+        else:
+            rows = pd.Series(dtype=int)
+
+        if not rows.empty:
+            df_sub = df_data[df_data["row_number"].isin(rows)]
+
+            total_score = (
+                df_sub["novelty_score"] +
+                df_sub["feasibility_score"] +
+                df_sub["marketability_score"]
+            )
+            avg_score = total_score.mean()
+
+            df_master.at[idx, "平均スコア"] = round(avg_score, 2)
+        else:
+            df_master.at[idx, "平均スコア"] = 0
+
 
     return df_master
