@@ -6,6 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 import pandas as pd
 from gspread_dataframe import set_with_dataframe
+from gspread_formatting import CellFormat, format_cell_range, textFormat
 from data_processing import prepare_master_dataframe
 
 # =========================================================
@@ -47,6 +48,22 @@ def google_login():
 # =========================================================
 # 📊 Google Sheets書き込み処理
 # =========================================================
+
+def format_sheet_header_bold(worksheet, df):
+    if df.empty:
+        return
+    
+    # ヘッダーの範囲を取得（A1から最後のカラム1行目まで）
+    last_col_letter = chr(64 + len(df.columns))  # A=65
+    header_range = f"A1:{last_col_letter}1"
+    
+    # フォーマット設定（太文字）
+    header_format = CellFormat(textFormat=textFormat(bold=True))
+    
+    # 適用
+    format_cell_range(worksheet, header_range, header_format)
+
+
 def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_data):
     """Googleスプレッドシートにデータを書き込む"""
     if client is None:
@@ -57,11 +74,12 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         spreadsheet = client.open_by_key(spreadsheet_id)
         worksheet = spreadsheet.worksheet(worksheet_name)
 
-        # 🔹 データ整形は別ファイルの関数で行う
         df_master = prepare_master_dataframe(map_data)
 
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+        format_sheet_header_bold(worksheet, df_master)
+
         st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
