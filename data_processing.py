@@ -132,13 +132,44 @@ def prepare_master_dataframe(map_data):
             df_master.at[idx, "実現性平均スコア"] = 0.0
 
     #--- 優秀アイデア数(12点以上)カウント ---
+    df_master["優秀アイデア数(12点以上)"] = 0
+    for idx, row in df_master.iterrows():
+        depth = row["depth"]
+
+        if depth == "1":
+            topic_name = row["Nomic Topic: Broad"]
+            rows = df_topics[df_topics["topic_depth_1"] == topic_name]["row_number"]
+        elif depth == "2":
+            topic_name = row["Nomic Topic: Medium"]
+            rows = df_topics[df_topics["topic_depth_2"] == topic_name]["row_number"]
+        else:
+            rows = pd.Series(dtype=int)
+
+        if not rows.empty:
+            df_sub = df_data[df_data["row_number"].isin(rows)]
+            total_score = (
+                df_sub["novelty_score"] +
+                df_sub["feasibility_score"] +
+                df_sub["marketability_score"]
+            )
+            count_over12 = (total_score >= 12).sum()
+            df_master.at[idx, "優秀アイデア数(12点以上)"] = count_over12
+        else:
+            df_master.at[idx, "優秀アイデア数(12点以上)"] = 0
+
+    #--- 優秀アイデア比率計算 ---
     df_master["優秀アイデアの比率(12点以上)"] = 0.0
     for idx, row in df_master.iterrows():
         idea_count = row["アイデア数"]
         excellent_count = row["優秀アイデア数(12点以上)"]
 
-        ratio = (excellent_count / idea_count * 100) if idea_count > 0 else 0.0
-        df_master.at[idx, "優秀アイデアの比率(12点以上)"] = ratio
+        if idea_count > 0:
+            ratio = (excellent_count / idea_count) * 100
+        else:
+            ratio = 0.0
+
+        df_master.at[idx, "優秀アイデアの比率(12点以上)"] = f"{round(ratio, 1)}%"
+
 
     #--- 新規性、実現可能性、市場性の各スコア詳細計算 ---
     df_master["novelty_score(新規性)平均スコア"] = 0.0
