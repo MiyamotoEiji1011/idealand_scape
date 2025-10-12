@@ -132,7 +132,7 @@ def prepare_master_dataframe(map_data):
             df_master.at[idx, "実現性平均スコア"] = 0.0
 
     #--- 優秀アイデア数(12点以上)カウント ---
-    df_master["優秀アイデアの比率(12点以上)"] = 0.0
+    df_master["優秀アイデアの比率(12点以上)"] = "0%"
     for idx, row in df_master.iterrows():
         idea_count = row["アイデア数"]
         excellent_count = row["優秀アイデア数(12点以上)"]
