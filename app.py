@@ -52,25 +52,27 @@ def google_login():
 def format_sheet_header_bold(worksheet, df):
     if df.empty:
         return
-    
-    # ヘッダー行は1行目だけ
+
     num_cols = len(df.columns)
-    
-    # A～Zの範囲まで対応
+
+    # 1行目の最後の列を取得（A-Z, AA, AB対応）
     if num_cols <= 26:
-        last_col_letter = chr(64 + num_cols)  # A=65
+        last_col_letter = chr(64 + num_cols)
     else:
-        # 27列以上の場合はAA, AB…に対応
         last_col_letter = ""
         n = num_cols
         while n > 0:
             n, remainder = divmod(n-1, 26)
             last_col_letter = chr(65 + remainder) + last_col_letter
 
+    # まず全体を通常書式に戻す
+    total_range = f"A1:{last_col_letter}{worksheet.row_count}"
+    normal_format = CellFormat(textFormat=TextFormat(bold=False))
+    format_cell_range(worksheet, total_range, normal_format)
+
+    # 1行目だけ太字にする
     header_range = f"A1:{last_col_letter}1"
-    
     header_format = CellFormat(textFormat=TextFormat(bold=True))
-    
     format_cell_range(worksheet, header_range, header_format)
 
 
