@@ -9,9 +9,6 @@ from gspread_dataframe import set_with_dataframe
 from gspread_formatting import CellFormat, format_cell_range, TextFormat
 from data_processing import prepare_master_dataframe
 
-# =========================================================
-# 🧩 Nomic Atlas関連処理
-# =========================================================
 def fetch_nomic_dataset(token: str, domain: str, map_name: str):
     """Nomic Atlasからデータセットを取得"""
     if not token:
@@ -100,7 +97,7 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 # =========================================================
 # 🏗️ Streamlit UI構築
 # =========================================================
-st.title("Nomic Atlas → Google Sheets Sync Demo (Data Hold & Export)")
+st.title("Demo App")
 
 # --- Nomic Atlas Settings ---
 st.subheader("Nomic Atlas Settings")
