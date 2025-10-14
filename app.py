@@ -105,13 +105,13 @@ st.title("Nomic Atlas → Google Sheets Sync Demo (Data Hold & Export)")
 # --- Nomic Atlas Settings ---
 st.subheader("Nomic Atlas Settings")
 default_token = st.secrets.get("NOMIC_TOKEN", "")
-token = st.text_input("API Token", value=default_token, type="password")
+token = st.text_input("API Token", value="", type="password")
 domain = st.text_input("Domain", value="atlas.nomic.ai")
-map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
+map_name = st.text_input("Map Name", value="")
 
 # --- Google Sheets Settings ---
 st.subheader("Google Sheets Settings")
-spreadsheet_id = st.text_input("Spreadsheet ID", value="1iPnaVVdUSC5BfNdxPVRSZAOiaCYWcMDYQWs5ps3AJsk")
+spreadsheet_id = st.text_input("Spreadsheet ID", value="")
 worksheet_name = st.text_input("Worksheet Name", value="シート1")
 
 # --- Buttons ---
