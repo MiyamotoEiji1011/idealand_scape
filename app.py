@@ -9,7 +9,9 @@ from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
 from sheet_formatter import (
     apply_header_style_green,
-    apply_filter_to_header
+    apply_filter_to_header,
+    apply_borders_to_range,
+    set_custom_column_widths
 )
 
 # =========================================================
@@ -68,6 +70,8 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 
         apply_header_style_green(worksheet, df_master)
         apply_filter_to_header(worksheet, df_master)
+        apply_borders_to_range(worksheet, df_master) 
+        set_custom_column_widths(worksheet)
 
         st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
