@@ -293,13 +293,13 @@ def apply_vertical_group_borders(worksheet, df):
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body={"requests": requests}
     ).execute()
-
 # ===============================
-# 🎨 C列をカテゴリ別プルダウン＋色付き表示にする
+# 🟢 C列にセル内プルダウンチップを設定
 # ===============================
 def apply_dropdown_with_color_to_column_C(worksheet, df):
     """
-    C列にプルダウンを設定し、選択肢ごとに背景色を変更する。
+    C列にGoogleシートの「プルダウンチップ」を設定。
+    セル全体を塗らず、セル内にカラーチップを表示。
     """
     if df.empty:
         return
@@ -313,7 +313,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
     num_rows = len(df) + 1  # ヘッダー含む
     col_index = 2  # C列（A=0, B=1, C=2）
 
-    # プルダウンに表示するカテゴリーと色
+    # カテゴリーとチップカラー（セル内UI用）
     category_colors = {
         "Entertainment": {"red": 0.98, "green": 0.86, "blue": 0.50},   # 黄色
         "Agriculture": {"red": 1.0, "green": 0.70, "blue": 0.70},      # ピンク
@@ -324,7 +324,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
         "VR Education": {"red": 0.90, "green": 0.85, "blue": 1.0},      # 紫
     }
 
-    # 1️⃣ プルダウン（データ検証）を設定
+    # データ検証の設定（セル内チップUI）
     dropdown_request = {
         "setDataValidation": {
             "range": {
@@ -339,44 +339,14 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
                     "type": "ONE_OF_LIST",
                     "values": [{"userEnteredValue": v} for v in category_colors.keys()],
                 },
-                "showCustomUi": True,
+                "showCustomUi": True,  # ✅ セル内プルダウンチップを表示
                 "strict": True,
             },
         }
     }
 
-    # 2️⃣ 条件付き書式ルールを設定（選択肢ごとに背景色変更）
-    rules_requests = []
-    for label, color in category_colors.items():
-        rules_requests.append({
-            "addConditionalFormatRule": {
-                "rule": {
-                    "ranges": [
-                        {
-                            "sheetId": worksheet.id,
-                            "startRowIndex": 1,
-                            "endRowIndex": num_rows,
-                            "startColumnIndex": col_index,
-                            "endColumnIndex": col_index + 1,
-                        }
-                    ],
-                    "booleanRule": {
-                        "condition": {
-                            "type": "TEXT_EQ",
-                            "values": [{"userEnteredValue": label}],
-                        },
-                        "format": {
-                            "backgroundColor": color,
-                            "textFormat": {"bold": True},
-                        },
-                    },
-                },
-                "index": 0,
-            }
-        })
-
-    # 3️⃣ APIリクエストまとめて送信
+    # データ検証リクエスト送信
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
-        body={"requests": [dropdown_request] + rules_requests},
+        body={"requests": [dropdown_request]},
     ).execute()
