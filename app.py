@@ -4,9 +4,8 @@ from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-import pandas as pd
 from gspread_dataframe import set_with_dataframe
-from googleapiclient.discovery import build
+import pandas as pd
 from data_processing import prepare_master_dataframe
 
 
@@ -30,7 +29,7 @@ def fetch_nomic_dataset(token: str, domain: str, map_name: str):
 
 
 # =========================================================
-# 🔑 Google Sheets認証（client と creds の両方を返す）
+# 🔑 Google Sheets認証
 # =========================================================
 def google_login():
     """Google Service Accountで認証"""
@@ -38,105 +37,86 @@ def google_login():
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
         scope = [
             "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive"
         ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
         st.success("✅ Google Service Account Loaded Successfully!")
-        return client, creds
+        return client
     except Exception as e:
         st.error(f"❌ Failed to load service account: {e}")
-        return None, None
+        return None
 
 
 # =========================================================
-# 🎨 テンプレートのフォーマットを既存シートに上書き（PASTE_FORMAT）
+# 🧱 テンプレートシートをターゲットにコピー
 # =========================================================
-def apply_template_format_to_existing_sheet(
+def copy_template_sheet_to_target(
     client: gspread.Client,
-    creds,
     template_spreadsheet_id: str,
     template_sheet_name: str,
     target_spreadsheet_id: str,
     target_sheet_name: str,
 ):
-    """テンプレートの書式を既存シートにPASTE_FORMATで上書き"""
+    """テンプレートシートを別スプレッドシートにコピーしてリネーム"""
     try:
-        service = build("sheets", "v4", credentials=creds)
+        tpl_ss = client.open_by_key(template_spreadsheet_id)
+        tpl_ws = tpl_ss.worksheet(template_sheet_name)
 
-        # --- テンプレートsheetId取得 ---
-        tpl_meta = service.spreadsheets().get(spreadsheetId=template_spreadsheet_id).execute()
-        tpl_sheet_id = None
-        for s in tpl_meta["sheets"]:
-            if s["properties"]["title"] == template_sheet_name:
-                tpl_sheet_id = s["properties"]["sheetId"]
+        # テンプレートをターゲットスプレッドシートへコピー
+        copied_sheet_info = tpl_ws.copy_to(target_spreadsheet_id)
+        new_sheet_id = copied_sheet_info["sheetId"]
+
+        tgt_ss = client.open_by_key(target_spreadsheet_id)
+
+        # 既存の同名シートを削除（存在する場合）
+        try:
+            old_ws = tgt_ss.worksheet(target_sheet_name)
+            tgt_ss.del_worksheet(old_ws)
+        except gspread.exceptions.WorksheetNotFound:
+            pass
+
+        # コピーされたシートを取得してリネーム
+        new_ws = None
+        for ws in tgt_ss.worksheets():
+            if ws.id == new_sheet_id:
+                new_ws = ws
                 break
-        if tpl_sheet_id is None:
-            st.error(f"❌ Template sheet '{template_sheet_name}' not found in template spreadsheet.")
+
+        if not new_ws:
+            st.error("❌ Copied sheet not found.")
             return None
 
-        # --- ターゲットsheetId取得 ---
-        tgt_meta = service.spreadsheets().get(spreadsheetId=target_spreadsheet_id).execute()
-        tgt_sheet_id = None
-        for s in tgt_meta["sheets"]:
-            if s["properties"]["title"] == target_sheet_name:
-                tgt_sheet_id = s["properties"]["sheetId"]
-                break
-        if tgt_sheet_id is None:
-            st.error(f"❌ Target sheet '{target_sheet_name}' not found in target spreadsheet.")
-            return None
+        new_ws.update_title(target_sheet_name)
 
-        # --- batchUpdate: 書式をコピー ---
-        body = {
-            "requests": [
-                {
-                    "copyPaste": {
-                        "source": {"sheetId": tpl_sheet_id},
-                        "destination": {"sheetId": tgt_sheet_id},
-                        "pasteType": "PASTE_FORMAT",
-                        "pasteOrientation": "NORMAL",
-                    }
-                }
-            ]
-        }
-
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=target_spreadsheet_id, body=body
-        ).execute()
-
-        st.success(f"✅ Template format applied successfully to '{target_sheet_name}'!")
-        return client.open_by_key(target_spreadsheet_id).worksheet(target_sheet_name)
+        st.success(f"✅ Template '{template_sheet_name}' copied to '{target_sheet_name}' successfully!")
+        return new_ws
 
     except Exception as e:
-        st.error(f"❌ Failed to apply template format: {e}")
+        st.error(f"❌ Failed to copy template sheet: {e}")
         return None
 
 
 # =========================================================
-# 📊 データ反映処理
+# 📊 データ書き込み処理
 # =========================================================
 def write_to_google_sheet(
     client,
-    creds,
     spreadsheet_id: str,
     worksheet_name: str,
     map_data,
     template_spreadsheet_id: str,
     template_sheet_name: str,
 ):
-    """
-    1) テンプレートの書式を既存シートに上書き（PASTE_FORMAT）
-    2) そのシートにデータを書き込む
-    """
+    """テンプレートコピー後にデータを書き込む"""
     if client is None:
         st.error("❌ Google client not initialized.")
         return
 
     try:
-        # 1) テンプレートフォーマットを既存シートに上書き
-        worksheet = apply_template_format_to_existing_sheet(
+        # 1) テンプレートをコピー
+        worksheet = copy_template_sheet_to_target(
             client=client,
-            creds=creds,
             template_spreadsheet_id=template_spreadsheet_id,
             template_sheet_name=template_sheet_name,
             target_spreadsheet_id=spreadsheet_id,
@@ -145,13 +125,11 @@ def write_to_google_sheet(
         if worksheet is None:
             return
 
-        # 2) データ生成 & 反映
+        # 2) データ作成・書き込み
         df_master = prepare_master_dataframe(map_data)
-
-        worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
-        st.success("✅ Template format applied and data written successfully!")
+        st.success("✅ Data written successfully to copied sheet!")
 
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
@@ -171,13 +149,13 @@ map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
 # --- Google Sheets Settings ---
 st.subheader("Google Sheets Settings")
-spreadsheet_id = st.text_input("Target Spreadsheet ID", value="")
+spreadsheet_id = st.text_input("Target Spreadsheet ID", value="1XDAGnEjY8XpDC9ohtaHgo4ECZG8OgNUNJo-ZrCksRDI")
 worksheet_name = st.text_input("Target Worksheet Name", value="シート1")
 
 template_spreadsheet_id = st.text_input(
     "Template Spreadsheet ID", value="1DJbrC0fGpVcPrHrTlDyzTZdt2K1lmm_2QJJVI8fqoIY"
 )
-template_sheet_name = st.text_input("Template Sheet Name", value="Template")
+template_sheet_name = st.text_input("Template Sheet Name", value="シート1")
 
 # --- Buttons ---
 if st.button("Fetch Nomic Dataset"):
@@ -186,22 +164,20 @@ if st.button("Fetch Nomic Dataset"):
         st.session_state.map_data = map_data
 
 if st.button("Google Login"):
-    gclient, creds = google_login()
+    gclient = google_login()
     if gclient:
         st.session_state.gclient = gclient
-        st.session_state.creds = creds
 
-if st.button("Apply Template Format & Write Data"):
+if st.button("Copy Template & Write Data"):
     if "map_data" not in st.session_state:
         st.error("❌ Please fetch the Nomic dataset first.")
-    elif "gclient" not in st.session_state or "creds" not in st.session_state:
+    elif "gclient" not in st.session_state:
         st.error("❌ Please log in to Google first.")
     elif not template_spreadsheet_id or not template_sheet_name:
         st.error("❌ Please set template spreadsheet & sheet.")
     else:
         write_to_google_sheet(
             client=st.session_state.gclient,
-            creds=st.session_state.creds,
             spreadsheet_id=spreadsheet_id,
             worksheet_name=worksheet_name,
             map_data=st.session_state.map_data,
