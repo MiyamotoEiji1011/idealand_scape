@@ -1,14 +1,24 @@
 # sheet_formatter.py
-from gspread_formatting import CellFormat, format_cell_range, TextFormat
+from gspread_formatting import (
+    CellFormat,
+    format_cell_range,
+    TextFormat,
+    Color,
+)
+from googleapiclient.discovery import build
 
-def format_sheet_header_bold(worksheet, df):
-    """Googleシートの1行目を太字にし、全体の見た目を整える"""
+
+# ===============================
+# 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
+# ===============================
+def apply_header_style_green(worksheet, df):
+    """1行目を緑色背景・白文字・太字にする"""
     if df.empty:
         return
 
     num_cols = len(df.columns)
 
-    # 最終列の文字（A-Z, AA, AB...対応）
+    # 最終列を算出
     if num_cols <= 26:
         last_col_letter = chr(64 + num_cols)
     else:
@@ -18,12 +28,49 @@ def format_sheet_header_bold(worksheet, df):
             n, remainder = divmod(n - 1, 26)
             last_col_letter = chr(65 + remainder) + last_col_letter
 
-    # 全体をリセット（太字解除など）
-    total_range = f"A1:{last_col_letter}{worksheet.row_count}"
-    normal_format = CellFormat(textFormat=TextFormat(bold=False))
-    format_cell_range(worksheet, total_range, normal_format)
-
-    # 1行目だけ太字
     header_range = f"A1:{last_col_letter}1"
-    header_format = CellFormat(textFormat=TextFormat(bold=True))
+    header_format = CellFormat(
+        backgroundColor=Color(red=0.36, green=0.66, blue=0.38),  # 少し深めの緑
+        textFormat=TextFormat(bold=True, foregroundColor=Color(1, 1, 1)),  # 白文字＋太字
+    )
     format_cell_range(worksheet, header_range, header_format)
+
+
+# ===============================
+# 🔍 フィルターを1行目に適用
+# ===============================
+def apply_filter_to_header(worksheet, df):
+    """シートの1行目にフィルターを設定"""
+    if df.empty:
+        return
+
+    spreadsheet = worksheet.spreadsheet
+    spreadsheet_id = spreadsheet.id
+
+    # gspreadの内部認証情報を取り出してGoogle Sheets APIを直接利用
+    gclient = spreadsheet.client
+    creds = gclient.auth
+    service = build("sheets", "v4", credentials=creds)
+
+    num_cols = len(df.columns)
+    request_body = {
+        "requests": [
+            {
+                "setBasicFilter": {
+                    "filter": {
+                        "range": {
+                            "sheetId": worksheet.id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1 + len(df),
+                            "startColumnIndex": 0,
+                            "endColumnIndex": num_cols,
+                        }
+                    }
+                }
+            }
+        ]
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id, body=request_body
+    ).execute()

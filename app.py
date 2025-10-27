@@ -7,7 +7,11 @@ import json
 import pandas as pd
 from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
-from sheet_formatter import format_sheet_header_bold
+from sheet_formatter import (
+    format_sheet_header_bold,
+    apply_header_style_green,
+    apply_filter_to_header
+)
 
 # =========================================================
 # 🌍 Nomic Atlasデータ取得
@@ -62,6 +66,9 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
+        apply_header_style_green(worksheet, df_master)
+        apply_filter_to_header(worksheet, df_master)
 
         # ✅ 書式設定を外部モジュールで適用
         format_sheet_header_bold(worksheet, df_master)
