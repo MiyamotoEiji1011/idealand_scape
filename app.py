@@ -1,124 +1,110 @@
+# app.py
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 import json
 
-
-# =========================================================
-# 🔑 Google 認証
-# =========================================================
+# ==============================
+# 🔐 Google 認証（Service Account）
+# ==============================
 def google_login():
     try:
-        service_account_info = json.loads(st.secrets["google_service_account"]["value"])
+        info = json.loads(st.secrets["google_service_account"]["value"])
         scope = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive",
         ]
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(info, scope)
         client = gspread.authorize(creds)
-        st.success("✅ Google認証成功")
-        return client, creds
+        st.success("✅ Google Service Account Loaded Successfully!")
+        return client
     except Exception as e:
-        st.error(f"❌ 認証失敗: {e}")
-        return None, None
+        st.error(f"❌ Failed to load service account: {e}")
+        return None
 
-
-# =========================================================
-# 📊 表（Tables）情報の確認
-# =========================================================
-def list_tables(creds, spreadsheet_id):
+# ============================================
+# 📄 コピー元シート → コピー先に反映（置き換え）
+# ============================================
+def copy_template_sheet_to_target(
+    client: gspread.Client,
+    template_spreadsheet_id: str,
+    template_sheet_name: str,
+    target_spreadsheet_id: str,
+    target_sheet_name: str,
+):
+    """
+    1) テンプレートSS内の指定シートをコピーしてターゲットSSへ追加
+    2) ターゲットSSに同名のシートがあれば削除
+    3) コピーしたシートを target_sheet_name にリネーム
+    """
     try:
-        service = build("sheets", "v4", credentials=creds)
-        meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id, includeGridData=False).execute()
+        # コピー元
+        tpl_ss = client.open_by_key(template_spreadsheet_id)
+        tpl_ws = tpl_ss.worksheet(template_sheet_name)
 
-        if "sheets" not in meta:
-            st.warning("⚠️ シート情報が取得できませんでした。")
-            return
+        # まずコピーを作る（←これで「最後の1枚を削除できない」問題を回避）
+        copied_info = tpl_ws.copy_to(target_spreadsheet_id)  # returns {"sheetId": ...}
+        new_sheet_id = copied_info.get("sheetId")
+        if not new_sheet_id:
+            st.error("❌ Failed to copy template sheet (no sheetId returned).")
+            return None
 
-        for sheet in meta["sheets"]:
-            title = sheet["properties"]["title"]
-            sheet_id = sheet["properties"]["sheetId"]
-            tables = sheet.get("basicFilter", None)
-            st.write(f"🧾 シート名: {title}, ID: {sheet_id}")
-            if tables:
-                st.write("　┗ 既存 BasicFilter（旧式フィルター）あり。")
-            else:
-                st.write("　┗ BasicFilterなし or 新しいTables機能の可能性。")
+        # コピー先
+        tgt_ss = client.open_by_key(target_spreadsheet_id)
 
-    except HttpError as he:
-        st.error(f"❌ HTTPエラー: {he}")
+        # 既存の同名シートがあれば削除（この時点ではシートが2枚以上あるので安全に削除可）
+        try:
+            old_ws = tgt_ss.worksheet(target_sheet_name)
+            tgt_ss.del_worksheet(old_ws)
+        except gspread.exceptions.WorksheetNotFound:
+            pass  # 無ければスキップ
+
+        # 追加されたシートを取得してリネーム
+        new_ws = None
+        for ws in tgt_ss.worksheets():
+            if ws.id == new_sheet_id:
+                new_ws = ws
+                break
+
+        if new_ws is None:
+            st.error("❌ Copied sheet not found in target spreadsheet.")
+            return None
+
+        new_ws.update_title(target_sheet_name)
+        st.success(f"✅ Copied '{template_sheet_name}' → '{target_sheet_name}'")
+        return new_ws
+
     except Exception as e:
-        st.error(f"❌ list_tables中のエラー: {e}")
+        st.error(f"❌ Failed to copy/replace sheet: {e}")
+        return None
 
+# ============
+# 🧪 UI
+# ============
+st.title("Sheet Copier (テンプレ反映だけ版)")
 
-# =========================================================
-# 🔧 BasicFilter設定をテスト的に追加 or 削除
-# =========================================================
-def test_set_basic_filter(creds, spreadsheet_id, sheet_name, rows=50, cols=20):
-    try:
-        service = build("sheets", "v4", credentials=creds)
-
-        # sheetIdを取得
-        meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-        sheet_id = next(s["properties"]["sheetId"] for s in meta["sheets"] if s["properties"]["title"] == sheet_name)
-
-        # 既存フィルターをクリア
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id,
-            body={"requests": [{"clearBasicFilter": {"sheetId": sheet_id}}]},
-        ).execute()
-
-        # 新規フィルター設定を試す
-        reqs = [{
-            "setBasicFilter": {
-                "filter": {
-                    "range": {
-                        "sheetId": sheet_id,
-                        "startRowIndex": 0,
-                        "endRowIndex": rows,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": cols,
-                    }
-                }
-            }
-        }]
-
-        service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": reqs}).execute()
-        st.success(f"✅ フィルターを再設定しました (範囲: A1〜{cols}, 行数: {rows})")
-
-    except HttpError as he:
-        if "partially intersects a table" in str(he):
-            st.warning("⚠️ 新しい '表 (Tables)' が存在しているため BasicFilter の再設定が禁止されています。")
-        else:
-            st.error(f"❌ APIエラー: {he}")
-    except Exception as e:
-        st.error(f"❌ test_set_basic_filter中のエラー: {e}")
-
-
-# =========================================================
-# 🧭 Streamlit UI
-# =========================================================
-st.title("🧪 Google Sheets Table Test")
-
-spreadsheet_id = st.text_input("📄 スプレッドシートIDを入力")
-sheet_name = st.text_input("🧾 シート名を入力", value="シート1")
-
-if st.button("Google認証"):
-    gclient, creds = google_login()
+st.subheader("Google Login")
+if st.button("Google Login"):
+    gclient = google_login()
     if gclient:
         st.session_state.gclient = gclient
-        st.session_state.creds = creds
 
-if st.button("表の状態を確認"):
-    if "creds" not in st.session_state:
-        st.error("❌ まずGoogleログインしてください。")
-    else:
-        list_tables(st.session_state.creds, spreadsheet_id)
+st.subheader("Copy Settings")
+template_spreadsheet_id = st.text_input("Template Spreadsheet ID", value="")
+template_sheet_name     = st.text_input("Template Sheet Name", value="Template")
+target_spreadsheet_id   = st.text_input("Target Spreadsheet ID", value="")
+target_sheet_name       = st.text_input("Target Sheet Name", value="シート1")
 
-if st.button("BasicFilterを再設定してみる"):
-    if "creds" not in st.session_state:
-        st.error("❌ まずGoogleログインしてください。")
+if st.button("Copy → Reflect to Target"):
+    if "gclient" not in st.session_state:
+        st.error("❌ Please log in first.")
+    elif not (template_spreadsheet_id and template_sheet_name and target_spreadsheet_id and target_sheet_name):
+        st.error("❌ Please fill all fields.")
     else:
-        test_set_basic_filter(st.session_state.creds, spreadsheet_id, sheet_name)
+        copy_template_sheet_to_target(
+            client=st.session_state.gclient,
+            template_spreadsheet_id=template_spreadsheet_id,
+            template_sheet_name=template_sheet_name,
+            target_spreadsheet_id=target_spreadsheet_id,
+            target_sheet_name=target_sheet_name,
+        )
