@@ -13,7 +13,8 @@ from sheet_formatter import (
     apply_green_outer_border,
     apply_wrap_text_to_header_row,
     apply_wrap_text_to_column_E,
-    apply_vertical_group_borders,  # ← これを追加！
+    apply_vertical_group_borders,
+    apply_dropdown_with_color_to_column_C,  # ← 新関数
     set_custom_column_widths,
 )
 
@@ -77,6 +78,7 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         apply_wrap_text_to_header_row(worksheet, df_master) 
         apply_wrap_text_to_column_E(worksheet, df_master)
         apply_vertical_group_borders(worksheet, df_master)
+        apply_dropdown_with_color_to_column_C(worksheet, df_master) 
         set_custom_column_widths(worksheet)
 
         st.success("✅ Successfully wrote data to Google Sheet!")
