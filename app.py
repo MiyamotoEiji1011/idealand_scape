@@ -14,11 +14,9 @@ from data_processing import prepare_master_dataframe
 # 🌍 Nomic Atlasデータ取得
 # =========================================================
 def fetch_nomic_dataset(token: str, domain: str, map_name: str):
-    """Nomic Atlasからデータセットを取得"""
     if not token:
         st.error("❌ Please provide API token first.")
         return None
-
     try:
         nomic.login(token=token, domain=domain)
         dataset = AtlasDataset(map_name)
@@ -30,17 +28,18 @@ def fetch_nomic_dataset(token: str, domain: str, map_name: str):
 
 
 # =========================================================
-# 🔑 Google Sheets認証
+# 🔑 Google Sheets認証（client と creds の両方を返す）
 # =========================================================
 def google_login():
-    """Google Service Accountで認証"""
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        scope = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive",
+        ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
         st.success("✅ Google Service Account Loaded Successfully!")
-        # ここで creds も返す
         return client, creds
     except Exception as e:
         st.error(f"❌ Failed to load service account: {e}")
@@ -48,30 +47,24 @@ def google_login():
 
 
 # =========================================================
-# 🎨 テンプレートデザインを既存シートに反映（PASTE_FORMAT）
+# 🎨 テンプレートのフォーマットを既存シートに上書き（PASTE_FORMAT）
 # =========================================================
 def apply_template_format_to_existing_sheet(
     client: gspread.Client,
+    creds,
     template_spreadsheet_id: str,
     template_sheet_name: str,
     target_spreadsheet_id: str,
     target_sheet_name: str,
 ):
-    """
-    テンプレートシートのフォーマットを既存シートにPASTE_FORMATで上書き反映する。
-    ※ データは変更されず、見た目のみテンプレートと統一される。
-    """
     try:
-        # Sheets APIクライアント生成
-        service = build("sheets", "v4", credentials=client.auth)
+        service = build("sheets", "v4", credentials=creds)
 
-        # シート情報取得
         tpl_ss = client.open_by_key(template_spreadsheet_id)
         tpl_ws = tpl_ss.worksheet(template_sheet_name)
         tgt_ss = client.open_by_key(target_spreadsheet_id)
         tgt_ws = tgt_ss.worksheet(target_sheet_name)
 
-        # batchUpdateでテンプレートのフォーマットをコピー
         body = {
             "requests": [
                 {
@@ -97,7 +90,9 @@ def apply_template_format_to_existing_sheet(
             spreadsheetId=target_spreadsheet_id, body=body
         ).execute()
 
-        st.success(f"✅ Template format from '{template_sheet_name}' applied to '{target_sheet_name}' successfully!")
+        st.success(
+            f"✅ Template format from '{template_sheet_name}' applied to '{target_sheet_name}' successfully!"
+        )
         return tgt_ws
 
     except Exception as e:
@@ -110,24 +105,18 @@ def apply_template_format_to_existing_sheet(
 # =========================================================
 def write_to_google_sheet(
     client,
+    creds,
     spreadsheet_id: str,
     worksheet_name: str,
     map_data,
     template_spreadsheet_id: str,
     template_sheet_name: str,
 ):
-    """
-    1) テンプレートシートの書式を既存シートに反映（PASTE_FORMAT）
-    2) そのシートにデータを書き込む
-    """
-    if client is None:
-        st.error("❌ Google client not initialized.")
-        return
-
     try:
-        # 1) テンプレート書式を既存シートに適用
+        # 1) テンプレートフォーマットを既存シートに上書き
         worksheet = apply_template_format_to_existing_sheet(
             client=client,
+            creds=creds,
             template_spreadsheet_id=template_spreadsheet_id,
             template_sheet_name=template_sheet_name,
             target_spreadsheet_id=spreadsheet_id,
@@ -136,11 +125,10 @@ def write_to_google_sheet(
         if worksheet is None:
             return
 
-        # 2) Nomicデータを反映
+        # 2) データ反映
         df_master = prepare_master_dataframe(map_data)
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
-
         st.success("✅ Template format applied and data written successfully!")
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
@@ -173,20 +161,22 @@ if st.button("Fetch Nomic Dataset"):
         st.session_state.map_data = map_data
 
 if st.button("Google Login"):
-    gclient = google_login()
+    gclient, creds = google_login()
     if gclient:
         st.session_state.gclient = gclient
+        st.session_state.creds = creds
 
 if st.button("Apply Template Format & Write Data"):
     if "map_data" not in st.session_state:
         st.error("❌ Please fetch the Nomic dataset first.")
-    elif "gclient" not in st.session_state:
+    elif "gclient" not in st.session_state or "creds" not in st.session_state:
         st.error("❌ Please log in to Google first.")
     elif not template_spreadsheet_id or not template_sheet_name:
         st.error("❌ Please set template spreadsheet & sheet.")
     else:
         write_to_google_sheet(
             client=st.session_state.gclient,
+            creds=st.session_state.creds,
             spreadsheet_id=spreadsheet_id,
             worksheet_name=worksheet_name,
             map_data=st.session_state.map_data,
