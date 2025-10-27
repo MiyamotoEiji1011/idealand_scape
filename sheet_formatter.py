@@ -177,7 +177,7 @@ def set_custom_column_widths(worksheet):
         "D": 165,
         "E": 550,
         **{chr(c): 150 for c in range(ord("F"), ord("J") + 1)},
-        **{chr(c): 200 for c in range(ord("K"), ord("U") + 1)},
+        **{chr(c): 220 for c in range(ord("K"), ord("U") + 1)},
         "V": 300,
         "W": 300,
         "X": 150,
@@ -248,4 +248,48 @@ def apply_wrap_text_to_header_row(worksheet, df):
 
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body=request_body
+    ).execute()
+
+# ===============================
+# 🟩 列グループ間に縦の区切り線を描画
+# ===============================
+def apply_vertical_group_borders(worksheet, df):
+    """
+    列グループの境界に緑色の縦線を描画。
+    グループ範囲：
+    A〜E | F〜J | K〜L | M〜O | P〜R | S〜U | V〜AB
+    """
+    if df.empty:
+        return
+
+    spreadsheet = worksheet.spreadsheet
+    spreadsheet_id = spreadsheet.id
+    gclient = spreadsheet.client
+    creds = gclient.auth
+    service = build("sheets", "v4", credentials=creds)
+
+    num_rows = len(df) + 1  # ヘッダー含む
+    green = {"red": 0.36, "green": 0.66, "blue": 0.38}
+
+    # 各グループの「右端列インデックス」を定義（A=0始まり）
+    # 例：E列=4, J列=9, L列=11 ...
+    group_right_edges = [4, 9, 11, 14, 17, 20, 27]  # AB=27
+
+    requests = []
+    for edge_index in group_right_edges:
+        requests.append({
+            "updateBorders": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": num_rows,
+                    "startColumnIndex": edge_index,
+                    "endColumnIndex": edge_index + 1,
+                },
+                "left": {"style": "SOLID", "width": 2, "color": green},
+            }
+        })
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id, body={"requests": requests}
     ).execute()
