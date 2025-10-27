@@ -6,6 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 from gspread_dataframe import set_with_dataframe
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 import pandas as pd
 from data_processing import prepare_master_dataframe
 
@@ -70,7 +71,7 @@ def copy_template_sheet_to_target(
 
         tgt_ss = client.open_by_key(target_spreadsheet_id)
 
-        # 既存の同名シートがあれば削除（複数シートある前提）
+        # 既存の同名シートがあれば削除
         try:
             old_ws = tgt_ss.worksheet(target_sheet_name)
             tgt_ss.del_worksheet(old_ws)
@@ -98,7 +99,7 @@ def copy_template_sheet_to_target(
 
 
 # =========================================================
-# 🔧 テーブル（基本フィルター）の範囲をDFに合わせて更新
+# 🔧 テーブル範囲をDFに合わせて安全に更新
 # =========================================================
 def resize_table_range_to_dataframe(
     creds,
@@ -109,8 +110,8 @@ def resize_table_range_to_dataframe(
     header_rows: int = 1,
 ):
     """
-    BasicFilter の範囲を DF に合わせて A1 起点で再設定する。
-    num_rows はデータ行数（ヘッダー除く）を渡す想定。
+    DFの行数・列数に合わせてシートのグリッドを拡張。
+    テンプレートに「表（Tables）」がある場合は BasicFilter の再設定をスキップ。
     """
     try:
         service = build("sheets", "v4", credentials=creds)
@@ -126,29 +127,54 @@ def resize_table_range_to_dataframe(
             st.error(f"❌ Target sheet '{sheet_name}' not found.")
             return
 
-        # 既存フィルターをクリア（あってもなくてもOK）
-        requests = [{"clearBasicFilter": {"sheetId": sheet_id}}]
-
-        # ヘッダー1行 + データ行 num_rows まで、列は num_cols までを範囲に設定
-        requests.append({
-            "setBasicFilter": {
-                "filter": {
-                    "range": {
-                        "sheetId": sheet_id,
-                        "startRowIndex": 0,
-                        "endRowIndex": header_rows + num_rows,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": num_cols,
-                    }
-                }
-            }
-        })
-
+        # 1) グリッド（行・列）のサイズを十分に確保
+        needed_rows = max(header_rows + num_rows, 200)   # 余裕あり
+        needed_cols = max(num_cols, 26)
         service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id, body={"requests": requests}
+            spreadsheetId=spreadsheet_id,
+            body={
+                "requests": [
+                    {
+                        "updateSheetProperties": {
+                            "properties": {
+                                "sheetId": sheet_id,
+                                "gridProperties": {
+                                    "rowCount": needed_rows,
+                                    "columnCount": needed_cols,
+                                },
+                            },
+                            "fields": "gridProperties(rowCount,columnCount)",
+                        }
+                    }
+                ]
+            },
         ).execute()
 
-        st.info(f"🧩 Table range set to rows: {header_rows + num_rows}, cols: {num_cols}")
+        # 2) BasicFilter を DF サイズで再設定（Tables があるとエラー → スキップ）
+        try:
+            requests = [{"clearBasicFilter": {"sheetId": sheet_id}}]
+            requests.append({
+                "setBasicFilter": {
+                    "filter": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 0,
+                            "endRowIndex": header_rows + num_rows,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": num_cols,
+                        }
+                    }
+                }
+            })
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id, body={"requests": requests}
+            ).execute()
+            st.info(f"🧩 BasicFilter set to rows={header_rows + num_rows}, cols={num_cols}")
+        except HttpError as he:
+            if "partially intersects a table" in str(he):
+                st.warning("⚠️ シートに '表 (Tables)' があるため、BasicFilter の再設定をスキップしました（テンプレートの表をそのまま使用）。")
+            else:
+                raise he
 
     except Exception as e:
         st.error(f"❌ Failed to resize table range: {e}")
@@ -183,7 +209,7 @@ def write_to_google_sheet(
         if worksheet is None:
             return
 
-        # 2) データを成形して、テーブル範囲（BasicFilter）を先に合わせる
+        # 2) データを成形し、テーブル範囲（またはグリッド）を先に合わせる
         df_master = prepare_master_dataframe(map_data)
         num_rows = len(df_master)          # データ行数（ヘッダー除く）
         num_cols = len(df_master.columns)  # 列数
@@ -229,9 +255,9 @@ template_sheet_name = st.text_input("Template Sheet Name", value="シート1")
 
 # --- Buttons ---
 if st.button("Fetch Nomic Dataset"):
-    map_data = fetch_nomic_dataset(token, domain, map_name)
-    if map_data:
-        st.session_state.map_data = map_data
+    data = fetch_nomic_dataset(token, domain, map_name)
+    if data:
+        st.session_state.map_data = data
 
 if st.button("Google Login"):
     gclient, creds = google_login()
