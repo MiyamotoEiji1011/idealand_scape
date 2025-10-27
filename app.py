@@ -14,9 +14,11 @@ from data_processing import prepare_master_dataframe
 # 🌍 Nomic Atlasデータ取得
 # =========================================================
 def fetch_nomic_dataset(token: str, domain: str, map_name: str):
+    """Nomic Atlasからデータセットを取得"""
     if not token:
         st.error("❌ Please provide API token first.")
         return None
+
     try:
         nomic.login(token=token, domain=domain)
         dataset = AtlasDataset(map_name)
@@ -31,6 +33,7 @@ def fetch_nomic_dataset(token: str, domain: str, map_name: str):
 # 🔑 Google Sheets認証（client と creds の両方を返す）
 # =========================================================
 def google_login():
+    """Google Service Accountで認証"""
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
         scope = [
@@ -57,28 +60,39 @@ def apply_template_format_to_existing_sheet(
     target_spreadsheet_id: str,
     target_sheet_name: str,
 ):
+    """テンプレートの書式を既存シートにPASTE_FORMATで上書き"""
     try:
         service = build("sheets", "v4", credentials=creds)
 
-        tpl_ss = client.open_by_key(template_spreadsheet_id)
-        tpl_ws = tpl_ss.worksheet(template_sheet_name)
-        tgt_ss = client.open_by_key(target_spreadsheet_id)
-        tgt_ws = tgt_ss.worksheet(target_sheet_name)
+        # --- テンプレートsheetId取得 ---
+        tpl_meta = service.spreadsheets().get(spreadsheetId=template_spreadsheet_id).execute()
+        tpl_sheet_id = None
+        for s in tpl_meta["sheets"]:
+            if s["properties"]["title"] == template_sheet_name:
+                tpl_sheet_id = s["properties"]["sheetId"]
+                break
+        if tpl_sheet_id is None:
+            st.error(f"❌ Template sheet '{template_sheet_name}' not found in template spreadsheet.")
+            return None
 
+        # --- ターゲットsheetId取得 ---
+        tgt_meta = service.spreadsheets().get(spreadsheetId=target_spreadsheet_id).execute()
+        tgt_sheet_id = None
+        for s in tgt_meta["sheets"]:
+            if s["properties"]["title"] == target_sheet_name:
+                tgt_sheet_id = s["properties"]["sheetId"]
+                break
+        if tgt_sheet_id is None:
+            st.error(f"❌ Target sheet '{target_sheet_name}' not found in target spreadsheet.")
+            return None
+
+        # --- batchUpdate: 書式をコピー ---
         body = {
             "requests": [
                 {
                     "copyPaste": {
-                        "source": {
-                            "sheetId": tpl_ws.id,
-                            "startRowIndex": 0,
-                            "startColumnIndex": 0,
-                        },
-                        "destination": {
-                            "sheetId": tgt_ws.id,
-                            "startRowIndex": 0,
-                            "startColumnIndex": 0,
-                        },
+                        "source": {"sheetId": tpl_sheet_id},
+                        "destination": {"sheetId": tgt_sheet_id},
                         "pasteType": "PASTE_FORMAT",
                         "pasteOrientation": "NORMAL",
                     }
@@ -90,10 +104,8 @@ def apply_template_format_to_existing_sheet(
             spreadsheetId=target_spreadsheet_id, body=body
         ).execute()
 
-        st.success(
-            f"✅ Template format from '{template_sheet_name}' applied to '{target_sheet_name}' successfully!"
-        )
-        return tgt_ws
+        st.success(f"✅ Template format applied successfully to '{target_sheet_name}'!")
+        return client.open_by_key(target_spreadsheet_id).worksheet(target_sheet_name)
 
     except Exception as e:
         st.error(f"❌ Failed to apply template format: {e}")
@@ -112,6 +124,14 @@ def write_to_google_sheet(
     template_spreadsheet_id: str,
     template_sheet_name: str,
 ):
+    """
+    1) テンプレートの書式を既存シートに上書き（PASTE_FORMAT）
+    2) そのシートにデータを書き込む
+    """
+    if client is None:
+        st.error("❌ Google client not initialized.")
+        return
+
     try:
         # 1) テンプレートフォーマットを既存シートに上書き
         worksheet = apply_template_format_to_existing_sheet(
@@ -125,11 +145,14 @@ def write_to_google_sheet(
         if worksheet is None:
             return
 
-        # 2) データ反映
+        # 2) データ生成 & 反映
         df_master = prepare_master_dataframe(map_data)
+
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
         st.success("✅ Template format applied and data written successfully!")
+
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
 
@@ -151,7 +174,9 @@ st.subheader("Google Sheets Settings")
 spreadsheet_id = st.text_input("Target Spreadsheet ID", value="")
 worksheet_name = st.text_input("Target Worksheet Name", value="シート1")
 
-template_spreadsheet_id = st.text_input("Template Spreadsheet ID", value="1DJbrC0fGpVcPrHrTlDyzTZdt2K1lmm_2QJJVI8fqoIY")
+template_spreadsheet_id = st.text_input(
+    "Template Spreadsheet ID", value="1DJbrC0fGpVcPrHrTlDyzTZdt2K1lmm_2QJJVI8fqoIY"
+)
 template_sheet_name = st.text_input("Template Sheet Name", value="Template")
 
 # --- Buttons ---
