@@ -6,9 +6,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 import pandas as pd
 from gspread_dataframe import set_with_dataframe
-from gspread_formatting import CellFormat, format_cell_range, TextFormat
 from data_processing import prepare_master_dataframe
+from sheet_formatter import format_sheet_header_bold
 
+# =========================================================
+# 🌍 Nomic Atlasデータ取得
+# =========================================================
 def fetch_nomic_dataset(token: str, domain: str, map_name: str):
     """Nomic Atlasからデータセットを取得"""
     if not token:
@@ -45,34 +48,6 @@ def google_login():
 # =========================================================
 # 📊 Google Sheets書き込み処理
 # =========================================================
-
-def format_sheet_header_bold(worksheet, df):
-    if df.empty:
-        return
-
-    num_cols = len(df.columns)
-
-    # 1行目の最後の列を取得（A-Z, AA, AB対応）
-    if num_cols <= 26:
-        last_col_letter = chr(64 + num_cols)
-    else:
-        last_col_letter = ""
-        n = num_cols
-        while n > 0:
-            n, remainder = divmod(n-1, 26)
-            last_col_letter = chr(65 + remainder) + last_col_letter
-
-    # まず全体を通常書式に戻す
-    total_range = f"A1:{last_col_letter}{worksheet.row_count}"
-    normal_format = CellFormat(textFormat=TextFormat(bold=False))
-    format_cell_range(worksheet, total_range, normal_format)
-
-    # 1行目だけ太字にする
-    header_range = f"A1:{last_col_letter}1"
-    header_format = CellFormat(textFormat=TextFormat(bold=True))
-    format_cell_range(worksheet, header_range, header_format)
-
-
 def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_data):
     """Googleスプレッドシートにデータを書き込む"""
     if client is None:
@@ -87,6 +62,8 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
+        # ✅ 書式設定を外部モジュールで適用
         format_sheet_header_bold(worksheet, df_master)
 
         st.success("✅ Successfully wrote data to Google Sheet!")
