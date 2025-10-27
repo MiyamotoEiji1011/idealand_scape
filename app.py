@@ -1,284 +1,124 @@
 import streamlit as st
-import nomic
-from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import json
-from gspread_dataframe import set_with_dataframe
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import pandas as pd
-from data_processing import prepare_master_dataframe
+import json
 
 
 # =========================================================
-# 🌍 Nomic Atlasデータ取得
-# =========================================================
-def fetch_nomic_dataset(token: str, domain: str, map_name: str):
-    """Nomic Atlasからデータセットを取得"""
-    if not token:
-        st.error("❌ Please provide API token first.")
-        return None
-    try:
-        nomic.login(token=token, domain=domain)
-        dataset = AtlasDataset(map_name)
-        st.success("✅ Dataset fetched successfully!")
-        return dataset.maps[0]
-    except Exception as e:
-        st.error(f"❌ Failed to fetch dataset: {e}")
-        return None
-
-
-# =========================================================
-# 🔑 Google Sheets認証（client と creds を返す）
+# 🔑 Google 認証
 # =========================================================
 def google_login():
-    """Google Service Accountで認証"""
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
         scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
         ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
-        st.success("✅ Google Service Account Loaded Successfully!")
+        st.success("✅ Google認証成功")
         return client, creds
     except Exception as e:
-        st.error(f"❌ Failed to load service account: {e}")
+        st.error(f"❌ 認証失敗: {e}")
         return None, None
 
 
 # =========================================================
-# 🧱 テンプレートシートをターゲットにコピー
+# 📊 表（Tables）情報の確認
 # =========================================================
-def copy_template_sheet_to_target(
-    client: gspread.Client,
-    template_spreadsheet_id: str,
-    template_sheet_name: str,
-    target_spreadsheet_id: str,
-    target_sheet_name: str,
-):
-    """テンプレートシートを別スプレッドシートにコピーしてリネーム（同名は置換）"""
+def list_tables(creds, spreadsheet_id):
     try:
-        tpl_ss = client.open_by_key(template_spreadsheet_id)
-        tpl_ws = tpl_ss.worksheet(template_sheet_name)
+        service = build("sheets", "v4", credentials=creds)
+        meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id, includeGridData=False).execute()
 
-        # テンプレートをターゲットへコピー
-        copied_sheet_info = tpl_ws.copy_to(target_spreadsheet_id)
-        new_sheet_id = copied_sheet_info["sheetId"]
+        if "sheets" not in meta:
+            st.warning("⚠️ シート情報が取得できませんでした。")
+            return
 
-        tgt_ss = client.open_by_key(target_spreadsheet_id)
+        for sheet in meta["sheets"]:
+            title = sheet["properties"]["title"]
+            sheet_id = sheet["properties"]["sheetId"]
+            tables = sheet.get("basicFilter", None)
+            st.write(f"🧾 シート名: {title}, ID: {sheet_id}")
+            if tables:
+                st.write("　┗ 既存 BasicFilter（旧式フィルター）あり。")
+            else:
+                st.write("　┗ BasicFilterなし or 新しいTables機能の可能性。")
 
-        # 既存の同名シートがあれば削除
-        try:
-            old_ws = tgt_ss.worksheet(target_sheet_name)
-            tgt_ss.del_worksheet(old_ws)
-        except gspread.exceptions.WorksheetNotFound:
-            pass
-
-        # コピーされたシートを取得してリネーム
-        new_ws = None
-        for ws in tgt_ss.worksheets():
-            if ws.id == new_sheet_id:
-                new_ws = ws
-                break
-
-        if not new_ws:
-            st.error("❌ Copied sheet not found.")
-            return None
-
-        new_ws.update_title(target_sheet_name)
-        st.success(f"✅ Template '{template_sheet_name}' copied to '{target_sheet_name}' successfully!")
-        return new_ws
-
+    except HttpError as he:
+        st.error(f"❌ HTTPエラー: {he}")
     except Exception as e:
-        st.error(f"❌ Failed to copy template sheet: {e}")
-        return None
+        st.error(f"❌ list_tables中のエラー: {e}")
 
 
 # =========================================================
-# 🔧 テーブル範囲をDFに合わせて安全に更新
+# 🔧 BasicFilter設定をテスト的に追加 or 削除
 # =========================================================
-def resize_table_range_to_dataframe(
-    creds,
-    spreadsheet_id: str,
-    sheet_name: str,
-    num_rows: int,
-    num_cols: int,
-    header_rows: int = 1,
-):
-    """
-    DFの行数・列数に合わせてシートのグリッドを拡張。
-    テンプレートに「表（Tables）」がある場合は BasicFilter の再設定をスキップ。
-    """
+def test_set_basic_filter(creds, spreadsheet_id, sheet_name, rows=50, cols=20):
     try:
         service = build("sheets", "v4", credentials=creds)
 
-        # sheetId を取得
+        # sheetIdを取得
         meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-        sheet_id = None
-        for s in meta["sheets"]:
-            if s["properties"]["title"] == sheet_name:
-                sheet_id = s["properties"]["sheetId"]
-                break
-        if sheet_id is None:
-            st.error(f"❌ Target sheet '{sheet_name}' not found.")
-            return
+        sheet_id = next(s["properties"]["sheetId"] for s in meta["sheets"] if s["properties"]["title"] == sheet_name)
 
-        # 1) グリッド（行・列）のサイズを十分に確保
-        needed_rows = max(header_rows + num_rows, 200)   # 余裕あり
-        needed_cols = max(num_cols, 26)
+        # 既存フィルターをクリア
         service.spreadsheets().batchUpdate(
             spreadsheetId=spreadsheet_id,
-            body={
-                "requests": [
-                    {
-                        "updateSheetProperties": {
-                            "properties": {
-                                "sheetId": sheet_id,
-                                "gridProperties": {
-                                    "rowCount": needed_rows,
-                                    "columnCount": needed_cols,
-                                },
-                            },
-                            "fields": "gridProperties(rowCount,columnCount)",
-                        }
-                    }
-                ]
-            },
+            body={"requests": [{"clearBasicFilter": {"sheetId": sheet_id}}]},
         ).execute()
 
-        # 2) BasicFilter を DF サイズで再設定（Tables があるとエラー → スキップ）
-        try:
-            requests = [{"clearBasicFilter": {"sheetId": sheet_id}}]
-            requests.append({
-                "setBasicFilter": {
-                    "filter": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": header_rows + num_rows,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": num_cols,
-                        }
+        # 新規フィルター設定を試す
+        reqs = [{
+            "setBasicFilter": {
+                "filter": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": 0,
+                        "endRowIndex": rows,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": cols,
                     }
                 }
-            })
-            service.spreadsheets().batchUpdate(
-                spreadsheetId=spreadsheet_id, body={"requests": requests}
-            ).execute()
-            st.info(f"🧩 BasicFilter set to rows={header_rows + num_rows}, cols={num_cols}")
-        except HttpError as he:
-            if "partially intersects a table" in str(he):
-                st.warning("⚠️ シートに '表 (Tables)' があるため、BasicFilter の再設定をスキップしました（テンプレートの表をそのまま使用）。")
-            else:
-                raise he
+            }
+        }]
 
+        service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": reqs}).execute()
+        st.success(f"✅ フィルターを再設定しました (範囲: A1〜{cols}, 行数: {rows})")
+
+    except HttpError as he:
+        if "partially intersects a table" in str(he):
+            st.warning("⚠️ 新しい '表 (Tables)' が存在しているため BasicFilter の再設定が禁止されています。")
+        else:
+            st.error(f"❌ APIエラー: {he}")
     except Exception as e:
-        st.error(f"❌ Failed to resize table range: {e}")
+        st.error(f"❌ test_set_basic_filter中のエラー: {e}")
 
 
 # =========================================================
-# 📊 データ書き込み処理（コピー→範囲合わせ→挿入）
+# 🧭 Streamlit UI
 # =========================================================
-def write_to_google_sheet(
-    client,
-    creds,
-    spreadsheet_id: str,
-    worksheet_name: str,
-    map_data,
-    template_spreadsheet_id: str,
-    template_sheet_name: str,
-):
-    """1) テンプレートコピー → 2) DFに合わせてテーブル範囲更新 → 3) データ挿入"""
-    if client is None:
-        st.error("❌ Google client not initialized.")
-        return
+st.title("🧪 Google Sheets Table Test")
 
-    try:
-        # 1) テンプレートをコピーしてメインタブ化
-        worksheet = copy_template_sheet_to_target(
-            client=client,
-            template_spreadsheet_id=template_spreadsheet_id,
-            template_sheet_name=template_sheet_name,
-            target_spreadsheet_id=spreadsheet_id,
-            target_sheet_name=worksheet_name,
-        )
-        if worksheet is None:
-            return
+spreadsheet_id = st.text_input("📄 スプレッドシートIDを入力")
+sheet_name = st.text_input("🧾 シート名を入力", value="シート1")
 
-        # 2) データを成形し、テーブル範囲（またはグリッド）を先に合わせる
-        df_master = prepare_master_dataframe(map_data)
-        num_rows = len(df_master)          # データ行数（ヘッダー除く）
-        num_cols = len(df_master.columns)  # 列数
-        resize_table_range_to_dataframe(
-            creds=creds,
-            spreadsheet_id=spreadsheet_id,
-            sheet_name=worksheet_name,
-            num_rows=num_rows,
-            num_cols=num_cols,
-            header_rows=1,
-        )
-
-        # 3) データを書き込む（ヘッダー含めて A1 から）
-        set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
-
-        st.success("✅ Finished: template copied, table range resized, data inserted!")
-
-    except Exception as e:
-        st.error(f"❌ Failed to write sheet: {e}")
-
-
-# =========================================================
-# 🏗️ Streamlit UI
-# =========================================================
-st.title("Demo App")
-
-# --- Nomic Atlas Settings ---
-st.subheader("Nomic Atlas Settings")
-default_token = st.secrets.get("NOMIC_TOKEN", "")
-token = st.text_input("API Token", value=default_token, type="password")
-domain = st.text_input("Domain", value="atlas.nomic.ai")
-map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
-
-# --- Google Sheets Settings ---
-st.subheader("Google Sheets Settings")
-spreadsheet_id = st.text_input("Target Spreadsheet ID", value="1XDAGnEjY8XpDC9ohtaHgo4ECZG8OgNUNJo-ZrCksRDI")
-worksheet_name = st.text_input("Target Worksheet Name", value="シート1")
-
-template_spreadsheet_id = st.text_input(
-    "Template Spreadsheet ID", value="1DJbrC0fGpVcPrHrTlDyzTZdt2K1lmm_2QJJVI8fqoIY"
-)
-template_sheet_name = st.text_input("Template Sheet Name", value="シート1")
-
-# --- Buttons ---
-if st.button("Fetch Nomic Dataset"):
-    data = fetch_nomic_dataset(token, domain, map_name)
-    if data:
-        st.session_state.map_data = data
-
-if st.button("Google Login"):
+if st.button("Google認証"):
     gclient, creds = google_login()
     if gclient:
         st.session_state.gclient = gclient
         st.session_state.creds = creds
 
-if st.button("Copy Template → Resize Table → Insert Data"):
-    if "map_data" not in st.session_state:
-        st.error("❌ Please fetch the Nomic dataset first.")
-    elif "gclient" not in st.session_state or "creds" not in st.session_state:
-        st.error("❌ Please log in to Google first.")
-    elif not template_spreadsheet_id or not template_sheet_name:
-        st.error("❌ Please set template spreadsheet & sheet.")
+if st.button("表の状態を確認"):
+    if "creds" not in st.session_state:
+        st.error("❌ まずGoogleログインしてください。")
     else:
-        write_to_google_sheet(
-            client=st.session_state.gclient,
-            creds=st.session_state.creds,
-            spreadsheet_id=spreadsheet_id,
-            worksheet_name=worksheet_name,
-            map_data=st.session_state.map_data,
-            template_spreadsheet_id=template_spreadsheet_id,
-            template_sheet_name=template_sheet_name,
-        )
+        list_tables(st.session_state.creds, spreadsheet_id)
+
+if st.button("BasicFilterを再設定してみる"):
+    if "creds" not in st.session_state:
+        st.error("❌ まずGoogleログインしてください。")
+    else:
+        test_set_basic_filter(st.session_state.creds, spreadsheet_id, sheet_name)
