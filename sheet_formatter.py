@@ -175,7 +175,7 @@ def set_custom_column_widths(worksheet):
         "B": 80,
         "C": 165,
         "D": 165,
-        "E": 400,
+        "E": 550,
         **{chr(c): 150 for c in range(ord("F"), ord("J") + 1)},
         **{chr(c): 200 for c in range(ord("K"), ord("U") + 1)},
         "V": 300,
@@ -205,4 +205,47 @@ def set_custom_column_widths(worksheet):
         })
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body={"requests": requests}
+    ).execute()
+
+
+# ===============================
+# 🔤 1行目すべてのセルを折り返し表示
+# ===============================
+def apply_wrap_text_to_header_row(worksheet, df):
+    """1行目（ヘッダー行）の全列に折り返し設定を適用"""
+    if df.empty:
+        return
+
+    num_cols = len(df.columns)
+
+    spreadsheet = worksheet.spreadsheet
+    spreadsheet_id = spreadsheet.id
+    gclient = spreadsheet.client
+    creds = gclient.auth
+    service = build("sheets", "v4", credentials=creds)
+
+    request_body = {
+        "requests": [
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 0,      # 1行目（0始まり）
+                        "endRowIndex": 1,        # 1行目だけ
+                        "startColumnIndex": 0,
+                        "endColumnIndex": num_cols,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "wrapStrategy": "WRAP"
+                        }
+                    },
+                    "fields": "userEnteredFormat.wrapStrategy",
+                }
+            }
+        ]
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id, body=request_body
     ).execute()
