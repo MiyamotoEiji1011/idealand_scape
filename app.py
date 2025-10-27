@@ -12,8 +12,8 @@ from sheet_formatter import (
     apply_filter_to_header,
     apply_green_outer_border,
     apply_wrap_text_to_column_E,
-    set_custom_column_widths,
     apply_wrap_text_to_header_row,
+    set_custom_column_widths,
 )
 
 # =========================================================
