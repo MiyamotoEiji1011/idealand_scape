@@ -40,10 +40,11 @@ def google_login():
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
         st.success("✅ Google Service Account Loaded Successfully!")
-        return client
+        # ここで creds も返す
+        return client, creds
     except Exception as e:
         st.error(f"❌ Failed to load service account: {e}")
-        return None
+        return None, None
 
 
 # =========================================================
