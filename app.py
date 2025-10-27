@@ -1,11 +1,8 @@
-# app.py
 import streamlit as st
 import nomic
 from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from gspread_dataframe import set_with_dataframe
 import json
 import pandas as pd
@@ -101,174 +98,117 @@ def copy_template_sheet_to_target(
 
 
 # =========================================================
-# 🔧 テーブル範囲を自動調整（新旧UI対応）
+# 📊 表の内部（ヘッダー検出して自動挿入）
 # =========================================================
-def adjust_table_range_safely(creds, spreadsheet_id, sheet_name, df_rows, df_cols, header_rows=1):
+def write_data_inside_table_auto(client, spreadsheet_id: str, worksheet_name: str, map_data):
     """
-    DFのサイズに合わせてシートの表範囲を調整。
-    新しい「表（Tables）」が存在する場合はBasicFilter設定をスキップ。
+    コピーされたシート内の「表(Table_○)」を壊さずに、
+    ヘッダー行を自動検出し、その下のデータ行をすべて置き換える。
     """
     try:
-        service = build("sheets", "v4", credentials=creds)
-        meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        worksheet = client.open_by_key(spreadsheet_id).worksheet(worksheet_name)
+        df_master = prepare_master_dataframe(map_data)
 
-        # sheetId取得
-        sheet_id = None
-        for s in meta["sheets"]:
-            if s["properties"]["title"] == sheet_name:
-                sheet_id = s["properties"]["sheetId"]
+        # === 1️⃣ ヘッダー位置の自動検出 ===
+        header_row_index = None
+        header_values = []
+        all_rows = worksheet.get_all_values()
+
+        for i, row in enumerate(all_rows[:10]):  # 上から10行以内にヘッダーがある前提
+            if any(cell.strip() for cell in row):  # 空行でない
+                header_row_index = i + 1
+                header_values = row
                 break
 
-        if sheet_id is None:
-            st.error(f"❌ Target sheet '{sheet_name}' not found.")
+        if not header_row_index:
+            st.error("❌ ヘッダー行を検出できませんでした。テンプレートを確認してください。")
             return
 
-        # 行列数を十分に確保
-        needed_rows = max(header_rows + df_rows, 200)
-        needed_cols = max(df_cols, 26)
+        st.info(f"🧭 ヘッダー行を自動検出: {header_row_index}行目")
 
-        requests = [
-            {
-                "updateSheetProperties": {
-                    "properties": {
-                        "sheetId": sheet_id,
-                        "gridProperties": {
-                            "rowCount": needed_rows,
-                            "columnCount": needed_cols,
-                        },
-                    },
-                    "fields": "gridProperties(rowCount,columnCount)",
-                }
-            }
-        ]
+        num_cols = len(header_values)
+        num_rows = len(df_master)
 
-        # BasicFilterの再設定を試す
-        try:
-            requests.append({"clearBasicFilter": {"sheetId": sheet_id}})
-            requests.append({
-                "setBasicFilter": {
-                    "filter": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": header_rows + df_rows,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": df_cols,
-                        }
-                    }
-                }
-            })
+        # === 2️⃣ データ範囲を算出 ===
+        from gspread.utils import rowcol_to_a1
 
-            service.spreadsheets().batchUpdate(
-                spreadsheetId=spreadsheet_id, body={"requests": requests}
-            ).execute()
-            st.info(f"🧩 BasicFilter resized to {df_rows} rows, {df_cols} cols")
+        start_row = header_row_index + 1
+        start_col = 1
+        end_row = start_row + num_rows - 1
+        end_col = num_cols
 
-        except HttpError as he:
-            if "partially intersects a table" in str(he):
-                st.warning("⚠️ テンプレートに新しい『表（Tables）』があるため、BasicFilter の再設定をスキップしました。")
-                service.spreadsheets().batchUpdate(
-                    spreadsheetId=spreadsheet_id, body={"requests": [requests[0]]}
-                ).execute()
-            else:
-                raise he
+        range_a1 = f"{rowcol_to_a1(start_row, start_col)}:{rowcol_to_a1(end_row, end_col)}"
+
+        # === 3️⃣ 書き込み前に旧データクリア（テーブル内部のみ） ===
+        worksheet.batch_clear([range_a1])
+
+        # === 4️⃣ 新データ挿入 ===
+        values = df_master.values.tolist()
+        worksheet.update(range_a1, values)
+
+        st.success(f"✅ {num_rows} 行のデータを表内に挿入しました！ (範囲: {range_a1})")
 
     except Exception as e:
-        st.error(f"❌ Failed to adjust table range: {e}")
+        st.error(f"❌ Failed to write inside table: {e}")
 
 
 # =========================================================
-# 📊 データ書き込み処理
+# 📋 メイン処理
 # =========================================================
-def write_to_google_sheet(
-    client,
-    creds,
-    spreadsheet_id: str,
-    worksheet_name: str,
-    map_data,
-    template_spreadsheet_id: str,
-    template_sheet_name: str,
-):
-    """1) テンプレートコピー → 2) 表範囲調整 → 3) データ挿入"""
-    try:
-        # 1️⃣ コピー
-        worksheet = copy_template_sheet_to_target(
-            client,
-            template_spreadsheet_id,
-            template_sheet_name,
-            spreadsheet_id,
-            worksheet_name,
-        )
-        if worksheet is None:
-            return
+def main():
+    st.title("📊 Google Sheet Template Copier + Table Inserter")
 
-        # 2️⃣ データ整形
-        df_master = prepare_master_dataframe(map_data)
-        df_rows = len(df_master)
-        df_cols = len(df_master.columns)
+    # --- Nomic設定 ---
+    st.subheader("Nomic Atlas Settings")
+    default_token = st.secrets.get("NOMIC_TOKEN", "")
+    token = st.text_input("API Token", value=default_token, type="password")
+    domain = st.text_input("Domain", value="atlas.nomic.ai")
+    map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
-        adjust_table_range_safely(
-            creds,
-            spreadsheet_id,
-            worksheet_name,
-            df_rows,
-            df_cols,
-        )
+    # --- Google Sheets設定 ---
+    st.subheader("Google Sheets Settings")
+    spreadsheet_id = st.text_input("Target Spreadsheet ID", value="1XDAGnEjY8XpDC9ohtaHgo4ECZG8OgNUNJo-ZrCksRDI")
+    worksheet_name = st.text_input("Target Worksheet Name", value="シート1")
 
-        # 3️⃣ データ挿入
-        set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
-        st.success("✅ Data inserted successfully!")
+    template_spreadsheet_id = st.text_input("Template Spreadsheet ID", value="1DJbrC0fGpVcPrHrTlDyzTZdt2K1lmm_2QJJVI8fqoIY")
+    template_sheet_name = st.text_input("Template Sheet Name", value="シート1")
 
-    except Exception as e:
-        st.error(f"❌ Failed to write sheet: {e}")
+    # --- ボタン群 ---
+    if st.button("Fetch Nomic Dataset"):
+        data = fetch_nomic_dataset(token, domain, map_name)
+        if data:
+            st.session_state.map_data = data
+
+    if st.button("Google Login"):
+        gclient, creds = google_login()
+        if gclient:
+            st.session_state.gclient = gclient
+            st.session_state.creds = creds
+
+    if st.button("Copy Template & Insert Data into Table"):
+        if "map_data" not in st.session_state:
+            st.error("❌ Please fetch the Nomic dataset first.")
+        elif "gclient" not in st.session_state:
+            st.error("❌ Please log in to Google first.")
+        elif not template_spreadsheet_id or not template_sheet_name:
+            st.error("❌ Please set template spreadsheet & sheet.")
+        else:
+            worksheet = copy_template_sheet_to_target(
+                client=st.session_state.gclient,
+                template_spreadsheet_id=template_spreadsheet_id,
+                template_sheet_name=template_sheet_name,
+                target_spreadsheet_id=spreadsheet_id,
+                target_sheet_name=worksheet_name,
+            )
+
+            if worksheet:
+                write_data_inside_table_auto(
+                    client=st.session_state.gclient,
+                    spreadsheet_id=spreadsheet_id,
+                    worksheet_name=worksheet_name,
+                    map_data=st.session_state.map_data,
+                )
 
 
-# =========================================================
-# 🧭 Streamlit UI
-# =========================================================
-st.title("📋 Google Sheet Copier + Auto Table Resizer")
-
-# --- Nomic Atlas Settings ---
-st.subheader("Nomic Atlas Settings")
-default_token = st.secrets.get("NOMIC_TOKEN", "")
-token = st.text_input("API Token", value=default_token, type="password")
-domain = st.text_input("Domain", value="atlas.nomic.ai")
-map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
-
-# --- Google Sheets Settings ---
-st.subheader("Google Sheets Settings")
-spreadsheet_id = st.text_input("Target Spreadsheet ID", value="")
-worksheet_name = st.text_input("Target Worksheet Name", value="メイン")
-
-template_spreadsheet_id = st.text_input("Template Spreadsheet ID", value="")
-template_sheet_name = st.text_input("Template Sheet Name", value="Table_2")
-
-# --- Buttons ---
-if st.button("Fetch Nomic Dataset"):
-    data = fetch_nomic_dataset(token, domain, map_name)
-    if data:
-        st.session_state.map_data = data
-
-if st.button("Google Login"):
-    gclient, creds = google_login()
-    if gclient:
-        st.session_state.gclient = gclient
-        st.session_state.creds = creds
-
-if st.button("Copy Template → Resize Table → Insert Data"):
-    if "map_data" not in st.session_state:
-        st.error("❌ Please fetch the Nomic dataset first.")
-    elif "gclient" not in st.session_state or "creds" not in st.session_state:
-        st.error("❌ Please log in to Google first.")
-    elif not template_spreadsheet_id or not template_sheet_name:
-        st.error("❌ Please set template spreadsheet & sheet.")
-    else:
-        write_to_google_sheet(
-            st.session_state.gclient,
-            st.session_state.creds,
-            spreadsheet_id,
-            worksheet_name,
-            st.session_state.map_data,
-            template_spreadsheet_id,
-            template_sheet_name,
-        )
+if __name__ == "__main__":
+    main()
