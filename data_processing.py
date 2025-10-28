@@ -172,9 +172,9 @@ def prepare_master_dataframe(map_data):
 
 
     #--- 新規性、実現可能性、市場性の各スコア詳細計算 ---
-    df_master["novelty_score(新規性)平均スコア"] = 0.0
-    df_master["novelty_score(新規性)優秀アイデア数(4点以上)"] = 0
-    df_master["novelty_score(新規性)優秀アイデア比率(4点以上)"] = "0%"
+    df_master["novelty_score(新規性)\n平均スコア"] = 0.0
+    df_master["novelty_score(新規性)\n優秀アイデア数(4点以上)"] = 0
+    df_master["novelty_score(新規性)\n優秀アイデア比率(4点以上)"] = "0%"
 
     for idx, row in df_master.iterrows():
         depth = row["depth"]
@@ -193,19 +193,19 @@ def prepare_master_dataframe(map_data):
 
         if not df_sub.empty:
             mean_score = df_sub["novelty_score"].mean()
-            df_master.at[idx, "novelty_score(新規性)平均スコア"] = round(mean_score, 2)
+            df_master.at[idx, "novelty_score(新規性)\n平均スコア"] = round(mean_score, 2)
 
             excellent_count = (df_sub["novelty_score"] >= 4).sum()
-            df_master.at[idx, "novelty_score(新規性)優秀アイデア数(4点以上)"] = int(excellent_count)
+            df_master.at[idx, "novelty_score(新規性)\n優秀アイデア数(4点以上)"] = int(excellent_count)
 
             total_count = len(df_sub)
             ratio = (excellent_count / total_count) * 100 if total_count > 0 else 0
             df_master.at[idx, "novelty_score(新規性)優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
 
 
-    df_master["marketability_score(市場性)平均スコア"] = 0.0
-    df_master["marketability_score(市場性)優秀アイデア数(4点以上)"] = 0
-    df_master["marketability_score(市場性)優秀アイデア比率(4点以上)"] = "0%"
+    df_master["marketability_score(市場性)\n平均スコア"] = 0.0
+    df_master["marketability_score(市場性)\n優秀アイデア数(4点以上)"] = 0
+    df_master["marketability_score(市場性)\n優秀アイデア比率(4点以上)"] = "0%"
 
     for idx, row in df_master.iterrows():
         depth = row["depth"]
@@ -222,19 +222,19 @@ def prepare_master_dataframe(map_data):
 
         if not df_sub.empty:
             mean_score = df_sub["marketability_score"].mean()
-            df_master.at[idx, "marketability_score(市場性)平均スコア"] = round(mean_score, 2)
+            df_master.at[idx, "marketability_score(市場性)\n平均スコア"] = round(mean_score, 2)
 
             excellent_count = (df_sub["marketability_score"] >= 4).sum()
-            df_master.at[idx, "marketability_score(市場性)優秀アイデア数(4点以上)"] = int(excellent_count)
+            df_master.at[idx, "marketability_score(市場性)\n優秀アイデア数(4点以上)"] = int(excellent_count)
 
             total_count = len(df_sub)
             ratio = (excellent_count / total_count) * 100 if total_count > 0 else 0
-            df_master.at[idx, "marketability_score(市場性)優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
+            df_master.at[idx, "marketability_score(市場性)\n優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
 
 
-    df_master["feasibility_score(実現可能性)平均スコア"] = 0.0
-    df_master["feasibility_score(実現可能性)優秀アイデア数(4点以上)"] = 0
-    df_master["feasibility_score(実現可能性)優秀アイデア比率(4点以上)"] = "0%"
+    df_master["feasibility_score(実現可能性)\n平均スコア"] = 0.0
+    df_master["feasibility_score(実現可能性)\n優秀アイデア数(4点以上)"] = 0
+    df_master["feasibility_score(実現可能性)\n優秀アイデア比率(4点以上)"] = "0%"
 
     for idx, row in df_master.iterrows():
         depth = row["depth"]
@@ -251,14 +251,14 @@ def prepare_master_dataframe(map_data):
 
         if not df_sub.empty:
             mean_score = df_sub["feasibility_score"].mean()
-            df_master.at[idx, "feasibility_score(実現可能性)平均スコア"] = round(mean_score, 2)
+            df_master.at[idx, "feasibility_score(実現可能性)\n平均スコア"] = round(mean_score, 2)
 
             excellent_count = (df_sub["feasibility_score"] >= 4).sum()
-            df_master.at[idx, "feasibility_score(実現可能性)優秀アイデア数(4点以上)"] = int(excellent_count)
+            df_master.at[idx, "feasibility_score(実現可能性)\n優秀アイデア数(4点以上)"] = int(excellent_count)
 
             total_count = len(df_sub)
             ratio = (excellent_count / total_count) * 100 if total_count > 0 else 0
-            df_master.at[idx, "feasibility_score(実現可能性)優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
+            df_master.at[idx, "feasibility_score(実現可能性)\n優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
 
 
     # --- 合計スコア計算列追加 ---
