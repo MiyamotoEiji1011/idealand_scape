@@ -15,6 +15,7 @@ from sheet_formatter import (
     apply_wrap_text_to_column_E,
     set_custom_column_widths,
     apply_dropdown_with_color_to_column_C,
+    apply_sheet_design,
 )
 
 
@@ -87,6 +88,7 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         apply_wrap_text_to_column_E(worksheet, df_master)
         set_custom_column_widths(worksheet)
         apply_dropdown_with_color_to_column_C(worksheet, df_master)
+        apply_sheet_design(worksheet, df_master)
 
         st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:

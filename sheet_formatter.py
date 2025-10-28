@@ -119,7 +119,7 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
     }
 
     # --- グループ境界線を追加（列ごとの緑線） ---
-    group_right_edges = [4, 9, 11, 14, 17, 20, 27]  # A〜E | F〜J | ... | V〜AB
+    group_right_edges = [5, 10, 12, 15, 18, 21, 28]
     group_lines = []
     for edge_index in group_right_edges:
         group_lines.append({
@@ -334,6 +334,61 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
                 "index": 0,
             }
         })
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet.id, body={"requests": requests}
+    ).execute()
+
+
+# ===============================
+# 🎨 シート全体デザイン適用
+# ===============================
+def apply_sheet_design(worksheet, df):
+    """全体の背景・縦揃え・交互色設定"""
+    if df.empty:
+        return
+
+    spreadsheet = worksheet.spreadsheet
+    service = build("sheets", "v4", credentials=spreadsheet.client.auth)
+
+    num_rows = len(df) + 1
+    num_cols = len(df.columns)
+
+    light_gray = {"red": 0.95, "green": 0.95, "blue": 0.95}
+
+    requests = []
+
+    # 縦中央揃え
+    requests.append({
+        "repeatCell": {
+            "range": {
+                "sheetId": worksheet.id,
+                "startRowIndex": 1,
+                "endRowIndex": num_rows,
+                "startColumnIndex": 0,
+                "endColumnIndex": num_cols,
+            },
+            "cell": {"userEnteredFormat": {"verticalAlignment": "MIDDLE"}},
+            "fields": "userEnteredFormat.verticalAlignment",
+        }
+    })
+
+    # 交互の背景色（2行目以降）
+    for i in range(1, num_rows):
+        if i % 2 == 0:
+            requests.append({
+                "repeatCell": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": i,
+                        "endRowIndex": i + 1,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": num_cols,
+                    },
+                    "cell": {"userEnteredFormat": {"backgroundColor": light_gray}},
+                    "fields": "userEnteredFormat.backgroundColor",
+                }
+            })
 
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet.id, body={"requests": requests}
