@@ -12,9 +12,8 @@ def google_login():
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
         scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
         ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
@@ -27,63 +26,70 @@ def google_login():
 
 
 # =========================================================
-# 📋 セルごとコピー処理（プルダウン対応）
+# 📋 プルダウン設定＋フォーマットコピー
 # =========================================================
 def copy_cell_with_dropdown(service, source_id: str, dest_id: str):
-    """A1セルをA1〜A10に、プルダウン設定を含めてコピー"""
     try:
+        # ① コピー元のA1のデータ検証ルールを取得
+        src = service.spreadsheets().get(
+            spreadsheetId=source_id,
+            ranges=["シート1!A1"],
+            fields="sheets.data.dataValidation",
+        ).execute()
+
+        validation = None
+        try:
+            validation = src["sheets"][0]["data"][0]["dataValidation"]
+        except KeyError:
+            st.warning("⚠️ コピー元A1にデータ検証（プルダウン設定）がありません。")
+        
         requests = []
 
-        # A1の値＋フォーマットをコピー
+        # ② A1の内容・フォーマットをコピー（10回分）
         for i in range(10):
             requests.append({
                 "copyPaste": {
                     "source": {
-                        "sheetId": 0,  # シート1
+                        "sheetId": 0,
                         "startRowIndex": 0,
                         "endRowIndex": 1,
                         "startColumnIndex": 0,
-                        "endColumnIndex": 1
+                        "endColumnIndex": 1,
                     },
                     "destination": {
                         "sheetId": 0,
                         "startRowIndex": i,
                         "endRowIndex": i + 1,
                         "startColumnIndex": 0,
-                        "endColumnIndex": 1
+                        "endColumnIndex": 1,
                     },
                     "pasteType": "PASTE_NORMAL",
-                    "pasteOrientation": "NORMAL"
+                    "pasteOrientation": "NORMAL",
                 }
             })
-            # プルダウン設定（データ検証）もコピー
+
+        # ③ A1のプルダウン設定をA1〜A10へ適用
+        if validation:
             requests.append({
-                "copyPaste": {
-                    "source": {
+                "setDataValidation": {
+                    "range": {
                         "sheetId": 0,
                         "startRowIndex": 0,
-                        "endRowIndex": 1,
+                        "endRowIndex": 10,
                         "startColumnIndex": 0,
-                        "endColumnIndex": 1
+                        "endColumnIndex": 1,
                     },
-                    "destination": {
-                        "sheetId": 0,
-                        "startRowIndex": i,
-                        "endRowIndex": i + 1,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": 1
-                    },
-                    "pasteType": "PASTE_VALIDATION",
-                    "pasteOrientation": "NORMAL"
+                    "rule": validation
                 }
             })
 
-        # リクエスト送信
+        # ④ リクエスト送信
         service.spreadsheets().batchUpdate(
-            spreadsheetId=dest_id, body={"requests": requests}
+            spreadsheetId=dest_id,
+            body={"requests": requests}
         ).execute()
 
-        st.success("✅ プルダウン設定を含めたセルコピーが完了しました！ (A1 → A1:A10)")
+        st.success("✅ プルダウン設定を含むセルコピーが完了しました！ (A1 → A1:A10)")
     except Exception as e:
         st.error(f"❌ コピーに失敗しました: {e}")
 
