@@ -47,6 +47,14 @@ if page == "nomic":
     st.text_input("APIトークン", key="nomic_token")
     st.text_input("ドメイン", key="nomic_domain")
     st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+    st.text_input("マップ名", key="nomic_map")
+
 
 elif page == "google":
     st.subheader("🔑 Google認証")
@@ -60,6 +68,20 @@ elif page == "sheet":
 elif page == "data":
     st.subheader("🧠 データ設定")
     st.checkbox("カテゴリごとに色を自動付与")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
+    st.text_input("カテゴリ列名")
     st.text_input("カテゴリ列名")
 
 elif page == "export":
