@@ -323,7 +323,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
         r, g, b = colorsys.hls_to_rgb(h, l, s)
         return {"red": r, "green": g, "blue": b}
 
-    def darker(rgb, factor=0.3):
+    def darker(rgb, factor=0.1):
         """背景色よりも少し濃いトーンのテキスト色を生成"""
         return {
             "red": rgb["red"] * factor,
