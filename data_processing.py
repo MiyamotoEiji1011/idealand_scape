@@ -200,7 +200,7 @@ def prepare_master_dataframe(map_data):
 
             total_count = len(df_sub)
             ratio = (excellent_count / total_count) * 100 if total_count > 0 else 0
-            df_master.at[idx, "novelty_score(新規性)優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
+            df_master.at[idx, "novelty_score(新規性)\n優秀アイデア比率(4点以上)"] = f"{round(ratio, 1)}%"
 
 
     df_master["marketability_score(市場性)\n平均スコア"] = 0.0
