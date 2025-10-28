@@ -3,11 +3,20 @@ import nomic
 from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from gspread_dataframe import set_with_dataframe
 import json
 import pandas as pd
+from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
-
+from sheet_formatter import (
+    apply_header_style_green,
+    apply_filter_to_header,
+    apply_green_outer_border,
+    apply_wrap_text_to_header_row,
+    apply_wrap_text_to_column_E,
+    apply_vertical_group_borders,
+    apply_dropdown_with_color_to_column_C,  # ← 新関数
+    set_custom_column_widths,
+)
 
 # =========================================================
 # 🌍 Nomic Atlasデータ取得
@@ -34,181 +43,86 @@ def fetch_nomic_dataset(token: str, domain: str, map_name: str):
 def google_login():
     """Google Service Accountで認証"""
     try:
-        sa_info = json.loads(st.secrets["google_service_account"]["value"])
-        scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
-            "https://www.googleapis.com/auth/spreadsheets",
-        ]
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(sa_info, scope)
+        service_account_info = json.loads(st.secrets["google_service_account"]["value"])
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
         st.success("✅ Google Service Account Loaded Successfully!")
-        return client, creds
+        return client
     except Exception as e:
         st.error(f"❌ Failed to load service account: {e}")
-        return None, None
-
-
-# =========================================================
-# 🧱 テンプレートシートをターゲットへコピー
-# =========================================================
-def copy_template_sheet_to_target(
-    client: gspread.Client,
-    template_spreadsheet_id: str,
-    template_sheet_name: str,
-    target_spreadsheet_id: str,
-    target_sheet_name: str,
-):
-    """テンプレートシートを別スプレッドシートにコピーして置き換え"""
-    try:
-        tpl_ss = client.open_by_key(template_spreadsheet_id)
-        tpl_ws = tpl_ss.worksheet(template_sheet_name)
-
-        # テンプレートをターゲットSSへコピー
-        copied_info = tpl_ws.copy_to(target_spreadsheet_id)
-        new_sheet_id = copied_info["sheetId"]
-
-        tgt_ss = client.open_by_key(target_spreadsheet_id)
-
-        # 同名シートがある場合削除
-        try:
-            old_ws = tgt_ss.worksheet(target_sheet_name)
-            tgt_ss.del_worksheet(old_ws)
-        except gspread.exceptions.WorksheetNotFound:
-            pass
-
-        # コピーしたシートをリネーム
-        new_ws = None
-        for ws in tgt_ss.worksheets():
-            if ws.id == new_sheet_id:
-                new_ws = ws
-                break
-
-        if not new_ws:
-            st.error("❌ Copied sheet not found.")
-            return None
-
-        new_ws.update_title(target_sheet_name)
-        st.success(f"✅ Copied '{template_sheet_name}' → '{target_sheet_name}'")
-        return new_ws
-
-    except Exception as e:
-        st.error(f"❌ Failed to copy template sheet: {e}")
         return None
 
 
 # =========================================================
-# 📊 表の内部（ヘッダー検出して自動挿入）
+# 📊 Google Sheets書き込み処理
 # =========================================================
-def write_data_inside_table_auto(client, spreadsheet_id: str, worksheet_name: str, map_data):
-    """
-    コピーされたシート内の「表(Table_○)」を壊さずに、
-    ヘッダー行を自動検出し、その下のデータ行をすべて置き換える。
-    """
+def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_data):
+    """Googleスプレッドシートにデータを書き込む"""
+    if client is None:
+        st.error("❌ Google client not initialized.")
+        return
+
     try:
-        worksheet = client.open_by_key(spreadsheet_id).worksheet(worksheet_name)
+        spreadsheet = client.open_by_key(spreadsheet_id)
+        worksheet = spreadsheet.worksheet(worksheet_name)
+
         df_master = prepare_master_dataframe(map_data)
 
-        # === 1️⃣ ヘッダー位置の自動検出 ===
-        header_row_index = None
-        header_values = []
-        all_rows = worksheet.get_all_values()
+        worksheet.clear()
+        set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
-        for i, row in enumerate(all_rows[:10]):  # 上から10行以内にヘッダーがある前提
-            if any(cell.strip() for cell in row):  # 空行でない
-                header_row_index = i + 1
-                header_values = row
-                break
+        apply_header_style_green(worksheet, df_master)
+        apply_filter_to_header(worksheet, df_master)
+        apply_green_outer_border(worksheet, df_master)
+        apply_wrap_text_to_header_row(worksheet, df_master) 
+        apply_wrap_text_to_column_E(worksheet, df_master)
+        apply_vertical_group_borders(worksheet, df_master)
+        apply_dropdown_with_color_to_column_C(worksheet, df_master) 
+        set_custom_column_widths(worksheet)
 
-        if not header_row_index:
-            st.error("❌ ヘッダー行を検出できませんでした。テンプレートを確認してください。")
-            return
-
-        st.info(f"🧭 ヘッダー行を自動検出: {header_row_index}行目")
-
-        num_cols = len(header_values)
-        num_rows = len(df_master)
-
-        # === 2️⃣ データ範囲を算出 ===
-        from gspread.utils import rowcol_to_a1
-
-        start_row = header_row_index + 1
-        start_col = 1
-        end_row = start_row + num_rows - 1
-        end_col = num_cols
-
-        range_a1 = f"{rowcol_to_a1(start_row, start_col)}:{rowcol_to_a1(end_row, end_col)}"
-
-        # === 3️⃣ 書き込み前に旧データクリア（テーブル内部のみ） ===
-        worksheet.batch_clear([range_a1])
-
-        # === 4️⃣ 新データ挿入 ===
-        values = df_master.values.tolist()
-        worksheet.update(range_a1, values)
-
-        st.success(f"✅ {num_rows} 行のデータを表内に挿入しました！ (範囲: {range_a1})")
-
+        st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
-        st.error(f"❌ Failed to write inside table: {e}")
+        st.error(f"❌ Failed to write sheet: {e}")
 
 
 # =========================================================
-# 📋 メイン処理
+# 🏗️ Streamlit UI構築
 # =========================================================
-def main():
-    st.title("📊 Google Sheet Template Copier + Table Inserter")
+st.title("Demo App")
 
-    # --- Nomic設定 ---
-    st.subheader("Nomic Atlas Settings")
-    default_token = st.secrets.get("NOMIC_TOKEN", "")
-    token = st.text_input("API Token", value=default_token, type="password")
-    domain = st.text_input("Domain", value="atlas.nomic.ai")
-    map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
+# --- Nomic Atlas Settings ---
+st.subheader("Nomic Atlas Settings")
+default_token = st.secrets.get("NOMIC_TOKEN", "")
+token = st.text_input("API Token", value=default_token, type="password")
+domain = st.text_input("Domain", value="atlas.nomic.ai")
+map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
-    # --- Google Sheets設定 ---
-    st.subheader("Google Sheets Settings")
-    spreadsheet_id = st.text_input("Target Spreadsheet ID", value="1XDAGnEjY8XpDC9ohtaHgo4ECZG8OgNUNJo-ZrCksRDI")
-    worksheet_name = st.text_input("Target Worksheet Name", value="シート1")
+# --- Google Sheets Settings ---
+st.subheader("Google Sheets Settings")
+spreadsheet_id = st.text_input("Spreadsheet ID", value="1XDAGnEjY8XpDC9ohtaHgo4ECZG8OgNUNJo-ZrCksRDI")
+worksheet_name = st.text_input("Worksheet Name", value="シート1")
 
-    template_spreadsheet_id = st.text_input("Template Spreadsheet ID", value="1DJbrC0fGpVcPrHrTlDyzTZdt2K1lmm_2QJJVI8fqoIY")
-    template_sheet_name = st.text_input("Template Sheet Name", value="シート1")
+# --- Buttons ---
+if st.button("Fetch Nomic Dataset"):
+    map_data = fetch_nomic_dataset(token, domain, map_name)
+    if map_data:
+        st.session_state.map_data = map_data
 
-    # --- ボタン群 ---
-    if st.button("Fetch Nomic Dataset"):
-        data = fetch_nomic_dataset(token, domain, map_name)
-        if data:
-            st.session_state.map_data = data
+if st.button("Google Login"):
+    gclient = google_login()
+    if gclient:
+        st.session_state.gclient = gclient
 
-    if st.button("Google Login"):
-        gclient, creds = google_login()
-        if gclient:
-            st.session_state.gclient = gclient
-            st.session_state.creds = creds
-
-    if st.button("Copy Template & Insert Data into Table"):
-        if "map_data" not in st.session_state:
-            st.error("❌ Please fetch the Nomic dataset first.")
-        elif "gclient" not in st.session_state:
-            st.error("❌ Please log in to Google first.")
-        elif not template_spreadsheet_id or not template_sheet_name:
-            st.error("❌ Please set template spreadsheet & sheet.")
-        else:
-            worksheet = copy_template_sheet_to_target(
-                client=st.session_state.gclient,
-                template_spreadsheet_id=template_spreadsheet_id,
-                template_sheet_name=template_sheet_name,
-                target_spreadsheet_id=spreadsheet_id,
-                target_sheet_name=worksheet_name,
-            )
-
-            if worksheet:
-                write_data_inside_table_auto(
-                    client=st.session_state.gclient,
-                    spreadsheet_id=spreadsheet_id,
-                    worksheet_name=worksheet_name,
-                    map_data=st.session_state.map_data,
-                )
-
-
-if __name__ == "__main__":
-    main()
+if st.button("Create / Update Google Sheet"):
+    if "map_data" not in st.session_state:
+        st.error("❌ Please fetch the Nomic dataset first.")
+    elif "gclient" not in st.session_state:
+        st.error("❌ Please log in to Google first.")
+    else:
+        write_to_google_sheet(
+            st.session_state.gclient,
+            spreadsheet_id,
+            worksheet_name,
+            st.session_state.map_data,
+        )
