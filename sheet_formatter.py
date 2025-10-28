@@ -12,7 +12,6 @@ import colorsys
 # 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
 # ===============================
 def apply_header_style_green(worksheet, df):
-    """1行目を緑色背景・白文字・太字にする"""
     if df.empty:
         return
 
@@ -34,7 +33,6 @@ def apply_header_style_green(worksheet, df):
         verticalAlignment="MIDDLE",
     )
     format_cell_range(worksheet, header_range, header_format)
-
 
 # ===============================
 # 🔍 フィルターを1行目に適用
@@ -73,8 +71,7 @@ def apply_filter_to_header(worksheet, df):
 # ===============================
 # 🟩 外枠のみを緑色で描画
 # ===============================
-def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
-    """表の外枠だけを緑色線で描画"""
+def apply_green_outer_border(worksheet, df):
     if df.empty:
         return
 
@@ -83,7 +80,9 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
 
     num_rows = len(df)
     num_cols = len(df.columns)
+
     green = {"red": 0.36, "green": 0.66, "blue": 0.38}
+    white = {"red": 1, "green": 1, "blue": 1}
 
     request_body = {
         "requests": [
@@ -91,15 +90,17 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
                 "updateBorders": {
                     "range": {
                         "sheetId": worksheet.id,
-                        "startRowIndex": start_row - 1,
-                        "endRowIndex": start_row - 1 + num_rows + 1,
-                        "startColumnIndex": start_col - 1,
-                        "endColumnIndex": start_col - 1 + num_cols,
+                        "startRowIndex": 0,
+                        "endRowIndex": num_rows + 1,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": num_cols,
                     },
                     "top": {"style": "SOLID", "width": 2, "color": green},
                     "bottom": {"style": "SOLID", "width": 2, "color": green},
                     "left": {"style": "SOLID", "width": 2, "color": green},
                     "right": {"style": "SOLID", "width": 2, "color": green},
+                    "innerHorizontal": {"style": "SOLID", "width": 1, "color": white},
+                    "innerVertical": {"style": "SOLID", "width": 1, "color": white},
                 }
             }
         ]
@@ -245,7 +246,7 @@ def apply_vertical_group_borders(worksheet, df):
     num_rows = len(df) + 1
     green = {"red": 0.36, "green": 0.66, "blue": 0.38}
 
-    group_right_edges = [4, 9, 11, 14, 17, 20, 27]  # A〜E | F〜J | ... | V〜AB
+    group_right_edges = [5, 10, 11, 15, 18, 21, 28]  # A〜E | F〜J | ... | V〜AB
     requests = []
     for edge_index in group_right_edges:
         requests.append({
@@ -270,90 +271,135 @@ def apply_vertical_group_borders(worksheet, df):
 # 🟢 C列のプルダウンをデータから自動生成＋条件付き書式で色付け
 # ===============================
 def apply_dropdown_with_color_to_column_C(worksheet, df):
-    """C列のカテゴリを抽出してプルダウン＋背景色を自動設定"""
+    """C列のカテゴリを抽出してプルダウン＋背景色を自動設定
+       D列にも同様のプルダウンを設定（薄灰色固定）"""
     if df.empty:
         return
 
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
 
+    # --- C列カテゴリ抽出 ---
     try:
         c_series = df.iloc[:, 2]
     except Exception:
         return
 
-    categories = sorted(set([str(v).strip() for v in c_series.dropna() if str(v).strip() != ""]))
+    categories = sorted(
+        set(
+            [
+                str(v).strip()
+                for v in c_series.dropna()
+                if str(v).strip() != "" and str(v).lower() != "none"
+            ]
+        )
+    )
     num_rows = len(df) + 1
-    col_index = 2  # C列（A=0, B=1, C=2）
 
-    # --- ドロップダウン設定（楕円UIなし）---
-    dropdown_request = {
+    # ========= C列 =========
+    col_index_c = 2
+    dropdown_c = {
         "setDataValidation": {
             "range": {
                 "sheetId": worksheet.id,
                 "startRowIndex": 1,
                 "endRowIndex": num_rows,
-                "startColumnIndex": col_index,
-                "endColumnIndex": col_index + 1,
+                "startColumnIndex": col_index_c,
+                "endColumnIndex": col_index_c + 1,
             },
             "rule": {
                 "condition": {
                     "type": "ONE_OF_LIST",
                     "values": [{"userEnteredValue": v} for v in categories],
                 },
-                "strict": True,   # ← showCustomUi削除
+                "strict": True,
             },
         }
     }
 
-    requests = [dropdown_request]
+    requests = [dropdown_c]
 
-    # --- 条件付き書式で背景色をカテゴリ別に付与 ---
-    import colorsys
-
-    def hsl_to_rgb(h, s, l):
-        r, g, b = colorsys.hls_to_rgb(h, l, s)
-        return {"red": r, "green": g, "blue": b}
-
+    # C列 色分け（カテゴリ別）
     n = max(1, len(categories))
-    palette = [hsl_to_rgb(i / n, 0.5, 0.85) for i in range(n)]
+    palette = [_hsl_to_rgb(i / n, 0.5, 0.85) for i in range(n)]
 
     for idx, cat in enumerate(categories):
-        requests.append({
-            "addConditionalFormatRule": {
-                "rule": {
-                    "ranges": [{
-                        "sheetId": worksheet.id,
-                        "startRowIndex": 1,
-                        "endRowIndex": num_rows,
-                        "startColumnIndex": col_index,
-                        "endColumnIndex": col_index + 1,
-                    }],
-                    "booleanRule": {
-                        "condition": {
-                            "type": "TEXT_EQ",
-                            "values": [{"userEnteredValue": cat}]
+        requests.append(
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [
+                            {
+                                "sheetId": worksheet.id,
+                                "startRowIndex": 1,
+                                "endRowIndex": num_rows,
+                                "startColumnIndex": col_index_c,
+                                "endColumnIndex": col_index_c + 1,
+                            }
+                        ],
+                        "booleanRule": {
+                            "condition": {
+                                "type": "TEXT_EQ",
+                                "values": [{"userEnteredValue": cat}],
+                            },
+                            "format": {"backgroundColor": palette[idx]},
                         },
-                        "format": {
-                            "backgroundColor": palette[idx]
-                        }
-                    }
-                },
-                "index": 0
+                    },
+                    "index": 0,
+                }
             }
-        })
+        )
 
+    # ========= D列 =========
+    col_index_d = 3
+    dropdown_d = {
+        "setDataValidation": {
+            "range": {
+                "sheetId": worksheet.id,
+                "startRowIndex": 1,
+                "endRowIndex": num_rows,
+                "startColumnIndex": col_index_d,
+                "endColumnIndex": col_index_d + 1,
+            },
+            "rule": {
+                "condition": {
+                    "type": "ONE_OF_LIST",
+                    "values": [{"userEnteredValue": v} for v in categories],
+                },
+                "strict": True,
+            },
+        }
+    }
+
+    requests.append(dropdown_d)
+
+    # D列：すべて薄灰色背景に統一
+    light_gray = {"red": 0.95, "green": 0.95, "blue": 0.95}
+    requests.append(
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": 1,
+                    "endRowIndex": num_rows,
+                    "startColumnIndex": col_index_d,
+                    "endColumnIndex": col_index_d + 1,
+                },
+                "cell": {"userEnteredFormat": {"backgroundColor": light_gray}},
+                "fields": "userEnteredFormat.backgroundColor",
+            }
+        }
+    )
+
+    # --- リクエスト送信 ---
     service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet.id,
-        body={"requests": requests},
+        spreadsheetId=spreadsheet.id, body={"requests": requests}
     ).execute()
 
 
 def _hsl_to_rgb(h, s, l):
-    """HSL→RGB 変換（0〜1）"""
     r, g, b = colorsys.hls_to_rgb(h, l, s)
     return {"red": r, "green": g, "blue": b}
-
 
 # ===============================
 # 🎨 シート全体デザイン適用
