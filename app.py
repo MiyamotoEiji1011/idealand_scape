@@ -8,6 +8,7 @@ import pandas as pd
 from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
 from sheet_formatter import (
+    reset_sheet_formatting,
     apply_header_style_green,
     apply_filter_to_header,
     apply_green_outer_border,
@@ -79,6 +80,8 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 
         # --- データフレーム書き込み ---
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
+
+        reset_sheet_formatting(worksheet)
 
         # --- フォーマット適用 ---
         apply_header_style_green(worksheet, df_master)

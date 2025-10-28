@@ -8,6 +8,106 @@ from googleapiclient.discovery import build
 import colorsys
 
 
+def reset_sheet_formatting(worksheet):
+    """
+    シート全体のデザイン・データ検証・条件付き書式を初期化（リセット）。
+    ※ 値は保持されるが、装飾・プルダウン・条件付き書式などは全削除。
+    """
+    spreadsheet = worksheet.spreadsheet
+    service = build("sheets", "v4", credentials=spreadsheet.client.auth)
+    spreadsheet_id = spreadsheet.id
+
+    sheet_id = worksheet.id
+
+    # まずシートの最大範囲を取得
+    data = worksheet.get_all_values()
+    num_rows = max(1, len(data))
+    num_cols = max(1, len(data[0]) if data else 1)
+
+    # --- 1️⃣ データ検証を削除（全域） ---
+    clear_data_validation = {
+        "clearBasicFilter": {"sheetId": sheet_id}
+    }
+
+    # --- 2️⃣ 条件付き書式を全削除 ---
+    clear_conditional_formats = {
+        "deleteConditionalFormatRule": {
+            "sheetId": sheet_id,
+            "index": 0
+        }
+    }
+
+    # 条件付き書式は複数存在することがあるので、
+    # deleteConditionalFormatRule をループで呼び出す必要がある
+    # → まず全削除専用のトリックで実現
+    # Sheets APIには直接「全部消す」メソッドがないが、
+    # index=0 を何度も呼ぶことで全件削除される。
+    try:
+        rules = service.spreadsheets().get(spreadsheetId=spreadsheet_id,
+                                           fields="sheets.conditionalFormats").execute()
+        num_rules = 0
+        for s in rules.get("sheets", []):
+            if "conditionalFormats" in s:
+                num_rules += len(s["conditionalFormats"])
+    except Exception:
+        num_rules = 0
+
+    delete_rules = []
+    for _ in range(num_rules):
+        delete_rules.append({
+            "deleteConditionalFormatRule": {
+                "sheetId": sheet_id,
+                "index": 0
+            }
+        })
+
+    # --- 3️⃣ セルの装飾をクリア（背景・フォント・枠線など） ---
+    clear_formats = {
+        "repeatCell": {
+            "range": {
+                "sheetId": sheet_id,
+                "startRowIndex": 0,
+                "endRowIndex": num_rows,
+                "startColumnIndex": 0,
+                "endColumnIndex": num_cols,
+            },
+            "cell": {
+                "userEnteredFormat": {}
+            },
+            "fields": "userEnteredFormat"
+        }
+    }
+
+    # --- 4️⃣ 枠線を消す ---
+    clear_borders = {
+        "updateBorders": {
+            "range": {
+                "sheetId": sheet_id,
+                "startRowIndex": 0,
+                "endRowIndex": num_rows,
+                "startColumnIndex": 0,
+                "endColumnIndex": num_cols,
+            },
+            "top": {"style": "NONE"},
+            "bottom": {"style": "NONE"},
+            "left": {"style": "NONE"},
+            "right": {"style": "NONE"},
+            "innerHorizontal": {"style": "NONE"},
+            "innerVertical": {"style": "NONE"},
+        }
+    }
+
+    # --- 一括送信 ---
+    requests = [clear_data_validation, clear_formats, clear_borders] + delete_rules
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests}
+    ).execute()
+
+    print("✅ Sheet formatting reset complete.")
+
+
 # ===============================
 # 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
 # ===============================
