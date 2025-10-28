@@ -11,19 +11,20 @@ if "page" not in st.session_state:
 # ================================
 # 🌆 ヘッダー（ロゴ＋アプリ名）
 # ================================
-logo_url = "https://prcdn.freetls.fastly.net/release_image/52909/36/52909-36-dd1d67cb4052a579b0c29e32c84fa9bf-2723x945.png?width=1950&height=1350&quality=85%2C65&format=jpeg&auto=webp&fit=bounds&bg-color=fff"  # 仮ロゴ（差し替え可）
+logo_url = "https://prcdn.freetls.fastly.net/release_image/52909/36/52909-36-dd1d67cb4052a579b0c29e32c84fa9bf-2723x945.png?width=1950&height=1350&quality=85%2C65&format=jpeg&auto=webp&fit=bounds&bg-color=fff"
 
 st.markdown(
     f"""
     <div class="header">
         <div class="header-left">
-            <img src="{logo_url}" class="logo">
+            <img src="{logo_url}" class="logo" alt="App Logo">
             <span class="app-title">DataSync Hub</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
 
 # ================================
 # 🔶 タブ（上部水平ボタン）
@@ -97,19 +98,29 @@ st.markdown("""
     padding: 12px 40px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
+            /* ロゴ画像をきれいにスケーリング */
+.logo {
+    height: 48px;                /* 高さを固定（ここを変えれば調整可能） */
+    width: auto;                 /* 横幅は自動で比率維持 */
+    object-fit: contain;         /* トリミングせず全体を収める */
+    display: block;
+    margin-right: 12px;
+}
+
+/* ロゴとタイトルの位置を微調整 */
 .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    flex-shrink: 0;
 }
-.logo {
-    width: 36px;
-    height: 36px;
-}
+
+/* タイトルとのバランス */
 .app-title {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 600;
     color: #222;
+    letter-spacing: 0.5px;
 }
 
 /* タブ群 */
