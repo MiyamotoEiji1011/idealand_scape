@@ -30,22 +30,23 @@ def google_login():
 # =========================================================
 def copy_cell_with_dropdown(service, source_id: str, dest_id: str):
     try:
-        # ① コピー元のA1のデータ検証ルールを取得
+        # ① コピー元のA1セルのdataValidationを取得
         src = service.spreadsheets().get(
             spreadsheetId=source_id,
             ranges=["シート1!A1"],
-            fields="sheets.data.dataValidation",
+            fields="sheets.data.rowData.values.dataValidation",
+            includeGridData=True
         ).execute()
 
+        # データ検証ルールの取得
         validation = None
         try:
-            validation = src["sheets"][0]["data"][0]["dataValidation"]
+            validation = src["sheets"][0]["data"][0]["rowData"][0]["values"][0]["dataValidation"]
         except KeyError:
-            st.warning("⚠️ コピー元A1にデータ検証（プルダウン設定）がありません。")
-        
-        requests = []
+            st.warning("⚠️ コピー元A1にプルダウン設定がありません。")
 
-        # ② A1の内容・フォーマットをコピー（10回分）
+        # ② 値とフォーマットをコピー
+        requests = []
         for i in range(10):
             requests.append({
                 "copyPaste": {
@@ -68,7 +69,7 @@ def copy_cell_with_dropdown(service, source_id: str, dest_id: str):
                 }
             })
 
-        # ③ A1のプルダウン設定をA1〜A10へ適用
+        # ③ プルダウン設定をA1〜A10に適用
         if validation:
             requests.append({
                 "setDataValidation": {
@@ -83,13 +84,13 @@ def copy_cell_with_dropdown(service, source_id: str, dest_id: str):
                 }
             })
 
-        # ④ リクエスト送信
+        # ④ API実行
         service.spreadsheets().batchUpdate(
-            spreadsheetId=dest_id,
-            body={"requests": requests}
+            spreadsheetId=dest_id, body={"requests": requests}
         ).execute()
 
         st.success("✅ プルダウン設定を含むセルコピーが完了しました！ (A1 → A1:A10)")
+
     except Exception as e:
         st.error(f"❌ コピーに失敗しました: {e}")
 
