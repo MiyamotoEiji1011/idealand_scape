@@ -78,8 +78,6 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         apply_dropdown_with_color_to_column_C(worksheet, df_master)
         apply_sheet_design(worksheet, df_master)
 
-        set_custom_column_widths(worksheet)
-
         st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
