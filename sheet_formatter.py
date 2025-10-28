@@ -434,7 +434,7 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                 blocks.append((start, prev))
 
             # 3) 各ブロックにだけ DataValidation と テキスト色(#666666) を適用
-            gray_text = {"red": 0/255, "green": 255/255, "blue": 0/255}
+            gray_text = {"red": 200/255, "green": 200/255, "blue": 200/255}
             reqs_d = []
             for (r1, r2) in blocks:
                 reqs_d.append({
