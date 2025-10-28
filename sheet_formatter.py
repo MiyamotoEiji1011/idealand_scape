@@ -109,7 +109,7 @@ def reset_sheet_formatting(worksheet):
 # 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
 # ===============================
 def apply_header_style_green(worksheet, df):
-    """1行目を緑色背景・白文字・太字にし、同時に1行目を固定"""
+    """1行目を緑背景＋白文字＋太字にし、1行目を固定＋高さ40pxに設定"""
     if df.empty:
         return
 
@@ -137,21 +137,37 @@ def apply_header_style_green(worksheet, df):
     # --- ヘッダー行のフォーマット適用 ---
     format_cell_range(worksheet, header_range, header_format)
 
-    # --- 1行目を固定する処理を追加 ---
-    request = {
+    # --- リクエスト群を作成 ---
+    requests = []
+
+    # 1️⃣ 1行目を固定
+    requests.append({
         "updateSheetProperties": {
             "properties": {
                 "sheetId": worksheet.id,
-                "gridProperties": {
-                    "frozenRowCount": 1  # ← ここで1行目を固定
-                }
+                "gridProperties": {"frozenRowCount": 1},
             },
             "fields": "gridProperties.frozenRowCount",
         }
-    }
+    })
 
+    # 2️⃣ 1行目の高さを40pxに変更
+    requests.append({
+        "updateDimensionProperties": {
+            "range": {
+                "sheetId": worksheet.id,
+                "dimension": "ROWS",
+                "startIndex": 0,  # 1行目はインデックス0
+                "endIndex": 1,
+            },
+            "properties": {"pixelSize": 40},  # ← 高さを40pxに設定
+            "fields": "pixelSize",
+        }
+    })
+
+    # --- 一括適用 ---
     service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet.id, body={"requests": [request]}
+        spreadsheetId=spreadsheet.id, body={"requests": requests}
     ).execute()
 
 
