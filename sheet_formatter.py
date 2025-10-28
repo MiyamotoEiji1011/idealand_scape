@@ -109,9 +109,12 @@ def reset_sheet_formatting(worksheet):
 # 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
 # ===============================
 def apply_header_style_green(worksheet, df):
-    """1行目を緑色背景・白文字・太字にする"""
+    """1行目を緑色背景・白文字・太字にし、同時に1行目を固定"""
     if df.empty:
         return
+
+    spreadsheet = worksheet.spreadsheet
+    service = build("sheets", "v4", credentials=spreadsheet.client.auth)
 
     num_cols = len(df.columns)
     if num_cols <= 26:
@@ -125,12 +128,31 @@ def apply_header_style_green(worksheet, df):
 
     header_range = f"A1:{last_col_letter}1"
     header_format = CellFormat(
-        backgroundColor=Color(red=0.36, green=0.66, blue=0.38),
+        backgroundColor=Color(red=53/255, green=104/255, blue=84/255),
         textFormat=TextFormat(bold=True, foregroundColor=Color(1, 1, 1)),
         horizontalAlignment="CENTER",
         verticalAlignment="MIDDLE",
     )
+
+    # --- ヘッダー行のフォーマット適用 ---
     format_cell_range(worksheet, header_range, header_format)
+
+    # --- 1行目を固定する処理を追加 ---
+    request = {
+        "updateSheetProperties": {
+            "properties": {
+                "sheetId": worksheet.id,
+                "gridProperties": {
+                    "frozenRowCount": 1  # ← ここで1行目を固定
+                }
+            },
+            "fields": "gridProperties.frozenRowCount",
+        }
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet.id, body={"requests": [request]}
+    ).execute()
 
 
 # ===============================
@@ -594,7 +616,7 @@ def apply_sheet_design(worksheet, df):
     num_rows = len(df) + 1
     num_cols = len(df.columns)
 
-    light_gray = {"red": 0.95, "green": 0.95, "blue": 0.95}
+    light_gray = {"red": 246/255, "green": 248/255, "blue": 249/255}
 
     requests = []
 
