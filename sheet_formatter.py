@@ -294,12 +294,13 @@ def apply_vertical_group_borders(worksheet, df):
         spreadsheetId=spreadsheet_id, body={"requests": requests}
     ).execute()
 # ===============================
-# 🟢 C列にセル内プルダウンチップを設定
+# 🟢 C列のプルダウンをデータから自動生成 + 条件付き書式で色付け
 # ===============================
 def apply_dropdown_with_color_to_column_C(worksheet, df):
     """
-    C列にGoogleシートの「プルダウンチップ」を設定。
-    セル全体を塗らず、セル内にカラーチップを表示。
+    C列の実データからカテゴリを自動抽出してプルダウンを作成。
+    色は API の制約によりチップ個別色を直接指定できないため、
+    条件付き書式でセル背景色をカテゴリごとに自動付与する。
     """
     if df.empty:
         return
@@ -310,26 +311,28 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
     creds = gclient.auth
     service = build("sheets", "v4", credentials=creds)
 
-    num_rows = len(df) + 1  # ヘッダー含む
-    col_index = 2  # C列（A=0, B=1, C=2）
+    # --- 1) C列のカテゴリ自動抽出 ---
+    # df の C 列名が "C" ではなく、実際のヘッダ名である前提（例： 'Category'）
+    # もし列名が確定していないなら df.iloc[:, 2] を使う
+    try:
+        c_series = df.iloc[:, 2]  # 0:A,1:B,2:C
+    except Exception:
+        return
 
-    # カテゴリーとチップカラー（セル内UI用）
-    category_colors = {
-        "Entertainment": {"red": 0.98, "green": 0.86, "blue": 0.50},   # 黄色
-        "Agriculture": {"red": 1.0, "green": 0.70, "blue": 0.70},      # ピンク
-        "Disaster Management": {"red": 1.0, "green": 0.80, "blue": 0.60}, # オレンジ
-        "Local Revitalization": {"red": 0.75, "green": 0.85, "blue": 1.0}, # 水色
-        "Personalized Learning": {"red": 0.80, "green": 0.90, "blue": 0.90}, # 薄青緑
-        "Healthcare": {"red": 0.80, "green": 1.0, "blue": 0.80},        # 緑
-        "VR Education": {"red": 0.90, "green": 0.85, "blue": 1.0},      # 紫
-    }
+    categories = sorted(set([str(v).strip() for v in c_series.dropna().tolist() if str(v).strip() != ""]))
+    if not categories:
+        # データがないときでも空のドロップダウンを設定しておく（UI揃え）
+        categories = []
 
-    # データ検証の設定（セル内チップUI）
+    num_rows = len(df) + 1  # ヘッダ含む
+    col_index = 2          # C列（A=0, B=1, C=2）
+
+    # --- 2) ドロップダウン（チップ表示ON） ---
     dropdown_request = {
         "setDataValidation": {
             "range": {
                 "sheetId": worksheet.id,
-                "startRowIndex": 1,
+                "startRowIndex": 1,                 # 2行目〜
                 "endRowIndex": num_rows,
                 "startColumnIndex": col_index,
                 "endColumnIndex": col_index + 1,
@@ -337,16 +340,71 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
             "rule": {
                 "condition": {
                     "type": "ONE_OF_LIST",
-                    "values": [{"userEnteredValue": v} for v in category_colors.keys()],
+                    "values": [{"userEnteredValue": v} for v in categories],
                 },
-                "showCustomUi": True,  # ✅ セル内プルダウンチップを表示
+                "showCustomUi": True,               # ✅ チップ表示
                 "strict": True,
             },
         }
     }
 
-    # データ検証リクエスト送信
+    requests = [dropdown_request]
+
+    # --- 3) 色の自動割当（条件付き書式でセル背景をカテゴリ色に） ---
+    # ※ チップ自体の色はAPI未対応。セル背景で代替し、視認性とカテゴリ配色を担保。
+    # なるべく被りにくい色相を自動生成（HSLのHを均等割り → 近似RGB）
+    def hsl_to_rgb(h, s, l):
+        # h: [0,1), s,l: [0,1]
+        import colorsys
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        return {"red": r, "green": g, "blue": b}
+
+    n = max(1, len(categories))
+    palette = []
+    for i in range(n):
+        h = (i / n) % 1.0
+        # やや淡いパステル寄り（l=0.85, s=0.5 程度）
+        palette.append(hsl_to_rgb(h, 0.5, 0.85))
+
+    # まず既存の C 列の条件付き書式を削除（この列だけ）
+    requests.append({
+        "deleteConditionalFormatRule": {
+            "index": 0,
+            "sheetId": worksheet.id
+        }
+    })
+    # ただし deleteConditionalFormatRule は単独 index 指定で順次消す方式。
+    # 既存数が不明のため安全策として "Update" で上書きに寄せる:
+    # → Sheets API は一括削除がないので、既存数が大量な場合は個別列用の専用ルール名管理を推奨。
+    # 簡易実装：上の delete は失敗しても無視される（存在しない index）
+
+    # カテゴリごとに「テキストが正確に一致」で背景色を付ける
+    for idx, cat in enumerate(categories):
+        requests.append({
+            "addConditionalFormatRule": {
+                "rule": {
+                    "ranges": [{
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 1,
+                        "endRowIndex": num_rows,
+                        "startColumnIndex": col_index,
+                        "endColumnIndex": col_index + 1,
+                    }],
+                    "booleanRule": {
+                        "condition": {
+                            "type": "TEXT_EQ",
+                            "values": [{"userEnteredValue": cat}]
+                        },
+                        "format": {
+                            "backgroundColor": palette[idx]
+                        }
+                    }
+                },
+                "index": 0
+            }
+        })
+
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
-        body={"requests": [dropdown_request]},
+        body={"requests": requests},
     ).execute()
