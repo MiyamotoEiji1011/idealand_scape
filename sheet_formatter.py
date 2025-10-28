@@ -10,41 +10,29 @@ import colorsys
 
 def reset_sheet_formatting(worksheet):
     """
-    シート全体のデザイン・データ検証・条件付き書式を初期化（リセット）。
-    ※ 値は保持されるが、装飾・プルダウン・条件付き書式などは全削除。
+    シート全体をリセットし、標準フォントとテキストカラーを設定。
+    - 既存の書式・プルダウン・条件付き書式・罫線などを全削除
+    - ベースフォント: Roboto
+    - テキストカラー: #434343 (67/255, 67/255, 67/255)
     """
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
     spreadsheet_id = spreadsheet.id
-
     sheet_id = worksheet.id
 
-    # まずシートの最大範囲を取得
+    # 現在の範囲サイズを取得
     data = worksheet.get_all_values()
     num_rows = max(1, len(data))
     num_cols = max(1, len(data[0]) if data else 1)
 
-    # --- 1️⃣ データ検証を削除（全域） ---
-    clear_data_validation = {
-        "clearBasicFilter": {"sheetId": sheet_id}
-    }
+    # --- 1️⃣ データ検証削除 ---
+    clear_data_validation = {"clearBasicFilter": {"sheetId": sheet_id}}
 
-    # --- 2️⃣ 条件付き書式を全削除 ---
-    clear_conditional_formats = {
-        "deleteConditionalFormatRule": {
-            "sheetId": sheet_id,
-            "index": 0
-        }
-    }
-
-    # 条件付き書式は複数存在することがあるので、
-    # deleteConditionalFormatRule をループで呼び出す必要がある
-    # → まず全削除専用のトリックで実現
-    # Sheets APIには直接「全部消す」メソッドがないが、
-    # index=0 を何度も呼ぶことで全件削除される。
+    # --- 2️⃣ 条件付き書式削除 ---
     try:
-        rules = service.spreadsheets().get(spreadsheetId=spreadsheet_id,
-                                           fields="sheets.conditionalFormats").execute()
+        rules = service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id, fields="sheets.conditionalFormats"
+        ).execute()
         num_rules = 0
         for s in rules.get("sheets", []):
             if "conditionalFormats" in s:
@@ -55,14 +43,20 @@ def reset_sheet_formatting(worksheet):
     delete_rules = []
     for _ in range(num_rules):
         delete_rules.append({
-            "deleteConditionalFormatRule": {
-                "sheetId": sheet_id,
-                "index": 0
-            }
+            "deleteConditionalFormatRule": {"sheetId": sheet_id, "index": 0}
         })
 
-    # --- 3️⃣ セルの装飾をクリア（背景・フォント・枠線など） ---
-    clear_formats = {
+    # --- 3️⃣ 全書式クリア + ベースフォント/カラー設定 ---
+    base_text_color = {"red": 67/255, "green": 67/255, "blue": 67/255}
+    base_text_format = {
+        "fontFamily": "Roboto",
+        "fontSize": 10,
+        "foregroundColor": base_text_color,
+        "bold": False,
+        "italic": False,
+    }
+
+    clear_and_set_format = {
         "repeatCell": {
             "range": {
                 "sheetId": sheet_id,
@@ -72,13 +66,17 @@ def reset_sheet_formatting(worksheet):
                 "endColumnIndex": num_cols,
             },
             "cell": {
-                "userEnteredFormat": {}
+                "userEnteredFormat": {
+                    "textFormat": base_text_format,
+                    "horizontalAlignment": "LEFT",
+                    "verticalAlignment": "MIDDLE",
+                }
             },
-            "fields": "userEnteredFormat"
+            "fields": "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)",
         }
     }
 
-    # --- 4️⃣ 枠線を消す ---
+    # --- 4️⃣ 枠線リセット ---
     clear_borders = {
         "updateBorders": {
             "range": {
@@ -97,15 +95,14 @@ def reset_sheet_formatting(worksheet):
         }
     }
 
-    # --- 一括送信 ---
-    requests = [clear_data_validation, clear_formats, clear_borders] + delete_rules
+    # 一括実行
+    requests = [clear_data_validation, clear_and_set_format, clear_borders] + delete_rules
 
     service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={"requests": requests}
+        spreadsheetId=spreadsheet_id, body={"requests": requests}
     ).execute()
 
-    print("✅ Sheet formatting reset complete.")
+    print("✅ Sheet formatting reset + base style applied (Roboto + #434343)")
 
 
 # ===============================
@@ -532,7 +529,7 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                 blocks.append((start, prev))
 
             # 3) 各ブロックにだけ DataValidation と テキスト色(#666666) を適用
-            gray_text = {"red": 110/255, "green": 110/255, "blue": 110/255}
+            gray_text = {"red": 100/255, "green": 100/255, "blue": 100/255}
             reqs_d = []
             for (r1, r2) in blocks:
                 reqs_d.append({
@@ -565,7 +562,11 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                         },
                         "cell": {
                             "userEnteredFormat": {
-                                "textFormat": {"foregroundColor": gray_text}
+                                "textFormat": 
+                                {
+                                    "foregroundColor": gray_text,
+                                               "bold": True  
+                                }
                             }
                         },
                         "fields": "userEnteredFormat.textFormat",
