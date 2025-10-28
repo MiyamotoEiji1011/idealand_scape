@@ -327,7 +327,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
         """
         背景色より少し濃く＆彩度を上げて同系統の文字色を生成。
         """
-        text_l = max(0, l - 0.35)     # 明度を下げてコントラストをつける
+        text_l = max(0, l - 0.5)     # 明度を下げてコントラストをつける
         text_s = min(1, s + 0.25)     # 彩度を上げて“灰色化”を防ぐ
         return hsl_to_rgb(h, text_s, text_l)
 
