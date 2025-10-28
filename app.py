@@ -9,7 +9,7 @@ if "page" not in st.session_state:
     st.session_state.page = "nomic"
 
 # ================================
-# 🧭 サイドバー（ツールバー）
+# 🧭 サイドバー
 # ================================
 with st.sidebar:
     st.title("⚙️ 設定メニュー")
@@ -32,7 +32,7 @@ with st.sidebar:
 st.markdown("---")
 
 # ================================
-# 🪟 メイン画面（切り替え表示）
+# 🪟 メイン画面
 # ================================
 st.title("📁 データ管理アプリケーション")
 
@@ -62,31 +62,11 @@ elif st.session_state.page == "export":
     st.info("ここに出力結果を表示予定。")
 
 # ================================
-# 💅 スタイル調整（CSSで見た目整える）
+# 💅 外部CSS読み込み
 # ================================
-st.markdown("""
-    <style>
-        section[data-testid="stSidebar"] {
-            background-color: #f0f2f6;
-            border-right: 1px solid #ddd;
-        }
-        div.block-container {
-            padding-top: 1rem;
-            padding-left: 2rem;
-        }
-        h1 {
-            color: #2c3e50;
-        }
-        .stButton > button {
-            background-color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            color: #333;
-        }
-        .stButton > button:hover {
-            background-color: #e6f0ff;
-            border-color: #4a90e2;
-            color: #000;
-        }
-    </style>
-""", unsafe_allow_html=True)
+def local_css(file_name):
+    with open(file_name, encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# 例: プロジェクト直下に style.css がある場合
+local_css("style.css")
