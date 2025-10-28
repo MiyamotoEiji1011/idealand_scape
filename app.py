@@ -1,8 +1,42 @@
 import streamlit as st
+import nomic
+from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from googleapiclient.discovery import build
 import json
+import pandas as pd
+from gspread_dataframe import set_with_dataframe
+from data_processing import prepare_master_dataframe
+from sheet_formatter import (
+    apply_header_style_green,
+    apply_filter_to_header,
+    apply_green_outer_border,
+    apply_wrap_text_to_header_row,
+    apply_wrap_text_to_column_E,
+    apply_vertical_group_borders,
+    apply_dropdown_with_color_to_column_C,
+    set_custom_column_widths,
+    apply_sheet_design
+)
+
+# =========================================================
+# 🌍 Nomic Atlasデータ取得
+# =========================================================
+def fetch_nomic_dataset(token: str, domain: str, map_name: str):
+    """Nomic Atlasからデータセットを取得"""
+    if not token:
+        st.error("❌ Please provide API token first.")
+        return None
+
+    try:
+        nomic.login(token=token, domain=domain)
+        dataset = AtlasDataset(map_name)
+        st.success("✅ Dataset fetched successfully!")
+        return dataset.maps[0]
+    except Exception as e:
+        st.error(f"❌ Failed to fetch dataset: {e}")
+        return None
+
 
 # =========================================================
 # 🔑 Google Sheets認証
@@ -11,109 +45,87 @@ def google_login():
     """Google Service Accountで認証"""
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
-        scope = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ]
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
-        service = build("sheets", "v4", credentials=creds)
         st.success("✅ Google Service Account Loaded Successfully!")
-        return client, service
+        return client
     except Exception as e:
         st.error(f"❌ Failed to load service account: {e}")
-        return None, None
+        return None
 
 
 # =========================================================
-# 📋 プルダウン設定＋フォーマットコピー
+# 📊 Google Sheets書き込み処理
 # =========================================================
-def copy_cell_with_dropdown(service, source_id: str, dest_id: str):
+def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_data):
+    """Googleスプレッドシートにデータを書き込む"""
+    if client is None:
+        st.error("❌ Google client not initialized.")
+        return
+
     try:
-        # ① コピー元のA1セルのdataValidationを取得
-        src = service.spreadsheets().get(
-            spreadsheetId=source_id,
-            ranges=["シート1!A1"],
-            fields="sheets.data.rowData.values.dataValidation",
-            includeGridData=True
-        ).execute()
+        spreadsheet = client.open_by_key(spreadsheet_id)
+        worksheet = spreadsheet.worksheet(worksheet_name)
 
-        # データ検証ルールの取得
-        validation = None
-        try:
-            validation = src["sheets"][0]["data"][0]["rowData"][0]["values"][0]["dataValidation"]
-        except KeyError:
-            st.warning("⚠️ コピー元A1にプルダウン設定がありません。")
+        df_master = prepare_master_dataframe(map_data)
 
-        # ② 値とフォーマットをコピー
-        requests = []
-        for i in range(10):
-            requests.append({
-                "copyPaste": {
-                    "source": {
-                        "sheetId": 0,
-                        "startRowIndex": 0,
-                        "endRowIndex": 1,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": 1,
-                    },
-                    "destination": {
-                        "sheetId": 0,
-                        "startRowIndex": i,
-                        "endRowIndex": i + 1,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": 1,
-                    },
-                    "pasteType": "PASTE_NORMAL",
-                    "pasteOrientation": "NORMAL",
-                }
-            })
+        worksheet.clear()
+        set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
-        # ③ プルダウン設定をA1〜A10に適用
-        if validation:
-            requests.append({
-                "setDataValidation": {
-                    "range": {
-                        "sheetId": 0,
-                        "startRowIndex": 0,
-                        "endRowIndex": 10,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": 1,
-                    },
-                    "rule": validation
-                }
-            })
+        apply_header_style_green(worksheet, df_master)
+        apply_filter_to_header(worksheet, df_master)
+        apply_green_outer_border(worksheet, df_master)
+        apply_wrap_text_to_header_row(worksheet, df_master)
+        apply_wrap_text_to_column_E(worksheet, df_master)
+        set_custom_column_widths(worksheet)
+        apply_dropdown_with_color_to_column_C(worksheet, df_master)
+        apply_sheet_design(worksheet, df_master)
 
-        # ④ API実行
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=dest_id, body={"requests": requests}
-        ).execute()
+        set_custom_column_widths(worksheet)
 
-        st.success("✅ プルダウン設定を含むセルコピーが完了しました！ (A1 → A1:A10)")
-
+        st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
-        st.error(f"❌ コピーに失敗しました: {e}")
+        st.error(f"❌ Failed to write sheet: {e}")
 
 
 # =========================================================
-# 🏗️ Streamlit UI
+# 🏗️ Streamlit UI構築
 # =========================================================
-st.title("プルダウン付きセルコピー ツール")
+st.title("Demo App")
+
+# --- Nomic Atlas Settings ---
+st.subheader("Nomic Atlas Settings")
+default_token = st.secrets.get("NOMIC_TOKEN", "")
+token = st.text_input("API Token", value=default_token, type="password")
+domain = st.text_input("Domain", value="atlas.nomic.ai")
+map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
+
+# --- Google Sheets Settings ---
+st.subheader("Google Sheets Settings")
+spreadsheet_id = st.text_input("Spreadsheet ID", value="spreadsheets/d/1ADT9nsSDqCR45-gGxNaQGccxOT2HIbni4Xqw_PvncqQ")
+worksheet_name = st.text_input("Worksheet Name", value="シート1")
+
+# --- Buttons ---
+if st.button("Fetch Nomic Dataset"):
+    map_data = fetch_nomic_dataset(token, domain, map_name)
+    if map_data:
+        st.session_state.map_data = map_data
 
 if st.button("Google Login"):
-    gclient, gservice = google_login()
+    gclient = google_login()
     if gclient:
         st.session_state.gclient = gclient
-        st.session_state.gservice = gservice
 
-st.subheader("スプレッドシート設定")
-source_id = st.text_input("コピー元スプレッドシートID")
-dest_id = st.text_input("コピー先スプレッドシートID")
-
-if st.button("A1セルをA1〜A10にコピー（プルダウン付き）"):
-    if "gservice" not in st.session_state:
-        st.error("❌ 先にGoogleログインしてください。")
-    elif not source_id or not dest_id:
-        st.error("❌ スプレッドシートIDを入力してください。")
+if st.button("Create / Update Google Sheet"):
+    if "map_data" not in st.session_state:
+        st.error("❌ Please fetch the Nomic dataset first.")
+    elif "gclient" not in st.session_state:
+        st.error("❌ Please log in to Google first.")
     else:
-        copy_cell_with_dropdown(st.session_state.gservice, source_id, dest_id)
+        write_to_google_sheet(
+            st.session_state.gclient,
+            spreadsheet_id,
+            worksheet_name,
+            st.session_state.map_data,
+        )
