@@ -119,7 +119,7 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
     }
 
     # --- グループ境界線を追加（列ごとの緑線） ---
-    group_right_edges = [5, 10, 12, 15, 18, 21, 28]
+    group_right_edges = [5, 10, 12, 15, 18, 21, 27]
     group_lines = []
     for edge_index in group_right_edges:
         group_lines.append({
