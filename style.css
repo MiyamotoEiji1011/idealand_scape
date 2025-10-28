@@ -1,26 +1,102 @@
+/* 全体の背景・フォント */
+.stApp {
+    background: linear-gradient(180deg, #141414 0%, #1a1a1a 100%);
+    color: #f5f5f5;
+    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+}
+
+/* サイドバー */
 section[data-testid="stSidebar"] {
-    background-color: #313131;
-    border-right: 1px solid #808080;
-}
-
-div.block-container {
+    background-color: #202124;
+    border-right: 1px solid #333;
     padding-top: 1rem;
-    padding-left: 2rem;
 }
 
-h1 {
-    color: #2c3e50;
+.sidebar-title {
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
 }
 
+/* サイドバーのボタン */
 .stButton>button {
-    background-color: #fff;
-    border: 1px solid #ccc;
+    background-color: #2c2c2c;
+    color: #ddd;
+    border: 1px solid #333;
     border-radius: 6px;
-    color: #333;
+    padding: 8px 16px;
+    text-align: left;
+    transition: 0.2s all ease-in-out;
+    font-weight: 500;
+    font-size: 15px;
 }
 
 .stButton>button:hover {
-    background-color: #e6f0ff;
-    border-color: #4a90e2;
-    color: #000;
+    background-color: #3a3a3a;
+    border-color: #ff4b4b;
+    color: #fff;
+}
+
+.stButton>button:focus {
+    background-color: #ff4b4b;
+    color: #fff;
+    border-color: #ff4b4b;
+}
+
+/* メインタイトル */
+.main-title {
+    font-size: 1.8rem;
+    color: #ffffff;
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+/* サブテキスト */
+.subtext {
+    color: #bbbbbb;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+/* 区切り線 */
+.divider {
+    border: 0;
+    height: 1px;
+    background-color: #333;
+    margin-bottom: 1.5rem;
+}
+
+/* ヘッダー */
+h2,
+h3 {
+    color: #e8e8e8 !important;
+}
+
+/* テキスト入力 */
+input,
+textarea,
+select {
+    background-color: #2a2a2a !important;
+    color: #fff !important;
+    border: 1px solid #444 !important;
+    border-radius: 4px !important;
+}
+
+input:focus {
+    border-color: #ff4b4b !important;
+    outline: none !important;
+}
+
+/* ファイルアップローダー */
+[data-testid="stFileUploader"] {
+    background-color: #2a2a2a !important;
+    border: 1px dashed #555 !important;
+}
+
+/* 情報ボックス */
+div[data-testid="stAlert"] {
+    background-color: #2a2a2a !important;
+    border-left: 4px solid #ff4b4b !important;
+    color: #fff !important;
 }
