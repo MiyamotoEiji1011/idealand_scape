@@ -11,7 +11,7 @@ if "page" not in st.session_state:
 # ================================
 # 🌆 ヘッダー（ロゴ＋アプリ名）
 # ================================
-logo_url = "https://upload.wikimedia.org/wikipedia/commons/4/4f/Orange_logo.svg"  # 仮ロゴ（差し替え可）
+logo_url = "https://prcdn.freetls.fastly.net/release_image/52909/36/52909-36-dd1d67cb4052a579b0c29e32c84fa9bf-2723x945.png?width=1950&height=1350&quality=85%2C65&format=jpeg&auto=webp&fit=bounds&bg-color=fff"  # 仮ロゴ（差し替え可）
 
 st.markdown(
     f"""
