@@ -119,7 +119,7 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
     }
 
     # --- グループ境界線を追加（列ごとの緑線） ---
-    group_right_edges = [5, 10, 12, 15, 18, 21, 27]
+    group_right_edges = [5, 10, 12, 15, 18, 21]
     group_lines = []
     for edge_index in group_right_edges:
         group_lines.append({
@@ -267,23 +267,36 @@ def set_custom_column_widths(worksheet):
 # 🟢 C列のプルダウン＋色分け
 # ===============================
 def apply_dropdown_with_color_to_column_C(worksheet, df):
+    """
+    C列にカテゴリプルダウンを自動設定し、Smart Dropdown UI（楕円チップ型）を有効化。
+    カテゴリごとに条件付き書式で背景色を付与する。
+    """
     if df.empty:
         return
 
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
 
+    # --- カテゴリ抽出 ---
     try:
         c_series = df.iloc[:, 2]
     except Exception:
         return
 
-    categories = sorted(
-        set([str(v).strip() for v in c_series.dropna() if str(v).strip() != ""])
-    )
-    num_rows = len(df) + 1
-    col_index = 2
+    # None, nan, 空白を除外して整形
+    categories = sorted(set([
+        str(v).strip()
+        for v in c_series.dropna()
+        if str(v).strip() not in ["", "None", "nan"]
+    ]))
 
+    if not categories:
+        return  # 空なら終了
+
+    num_rows = len(df) + 1
+    col_index = 2  # C列（A=0, B=1, C=2）
+
+    # --- データ検証ルールの設定（Smart UI対応）---
     dropdown_request = {
         "setDataValidation": {
             "range": {
@@ -298,6 +311,9 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
                     "type": "ONE_OF_LIST",
                     "values": [{"userEnteredValue": v} for v in categories],
                 },
+                # ✅ Smart Dropdown UI（楕円UI）を有効化
+                "showCustomUi": True,
+                # ✅ リスト外の入力は許可しない
                 "strict": True,
             },
         }
@@ -305,12 +321,14 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
 
     requests = [dropdown_request]
 
+    # --- 条件付き書式で背景色設定 ---
     def hsl_to_rgb(h, s, l):
         r, g, b = colorsys.hls_to_rgb(h, l, s)
         return {"red": r, "green": g, "blue": b}
 
+    # 彩度・明度のバランスを少し上げて視認性を改善
     n = max(1, len(categories))
-    palette = [hsl_to_rgb(i / n, 0.5, 0.85) for i in range(n)]
+    palette = [hsl_to_rgb(i / n, 0.55, 0.80) for i in range(n)]
 
     for idx, cat in enumerate(categories):
         requests.append({
@@ -328,16 +346,22 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
                             "type": "TEXT_EQ",
                             "values": [{"userEnteredValue": cat}],
                         },
-                        "format": {"backgroundColor": palette[idx]},
+                        "format": {
+                            "backgroundColor": palette[idx],
+                            # ✅ 文字色を少し濃くしてコントラストUP
+                            "textFormat": {"foregroundColor": {"red": 0.1, "green": 0.1, "blue": 0.1}},
+                        },
                     },
                 },
                 "index": 0,
             }
         })
 
+    # --- 一括送信 ---
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet.id, body={"requests": requests}
     ).execute()
+
 
 
 # ===============================
