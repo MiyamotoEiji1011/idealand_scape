@@ -9,16 +9,9 @@ from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
 from sheet_formatter import (
     apply_header_style_green,
-    apply_filter_to_header,
-    apply_green_outer_border,
-    apply_wrap_text_to_header_row,
-    apply_wrap_text_to_column_E,
-    apply_vertical_group_borders,
     apply_dropdown_with_color_to_column_C,
-    set_custom_column_widths,
     apply_sheet_design
 )
-
 # =========================================================
 # 🌍 Nomic Atlasデータ取得
 # =========================================================
@@ -74,11 +67,14 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
         apply_header_style_green(worksheet, df_master)
-        apply_filter_to_header(worksheet, df_master)
-        apply_green_outer_border(worksheet, df_master)
-        apply_wrap_text_to_header_row(worksheet, df_master)
-        apply_wrap_text_to_column_E(worksheet, df_master)
-        set_custom_column_widths(worksheet)
+        # 以下の行は削除またはコメントアウト
+        # apply_filter_to_header(worksheet, df_master)
+        # apply_green_outer_border(worksheet, df_master)
+        # apply_wrap_text_to_header_row(worksheet, df_master)
+        # apply_wrap_text_to_column_E(worksheet, df_master)
+        # set_custom_column_widths(worksheet)
+        # apply_vertical_group_borders(worksheet, df_master)
+
         apply_dropdown_with_color_to_column_C(worksheet, df_master)
         apply_sheet_design(worksheet, df_master)
 
