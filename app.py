@@ -9,31 +9,47 @@ if "page" not in st.session_state:
     st.session_state.page = "nomic"
 
 # ================================
-# 🌆 ヘッダー（ロゴ＋アプリ名＋上部タブ）
+# 🌆 ヘッダー（ロゴ＋アプリ名）
 # ================================
-logo_url = "https://upload.wikimedia.org/wikipedia/commons/4/4f/Orange_logo.svg"  # 仮ロゴ（後で置き換え可能）
+logo_url = "https://upload.wikimedia.org/wikipedia/commons/4/4f/Orange_logo.svg"  # 仮ロゴ（差し替え可）
 
-st.markdown(f"""
+st.markdown(
+    f"""
     <div class="header">
         <div class="header-left">
             <img src="{logo_url}" class="logo">
             <span class="app-title">DataSync Hub</span>
         </div>
-        <div class="header-tabs">
-            <a class="tab {'active' if st.session_state.page=='nomic' else ''}" href="?page=nomic">Nomic設定</a>
-            <a class="tab {'active' if st.session_state.page=='google' else ''}" href="?page=google">Google認証</a>
-            <a class="tab {'active' if st.session_state.page=='sheet' else ''}" href="?page=sheet">スプレッドシート</a>
-            <a class="tab {'active' if st.session_state.page=='data' else ''}" href="?page=data">データ設定</a>
-            <a class="tab {'active' if st.session_state.page=='export' else ''}" href="?page=export">出力・実行</a>
-        </div>
     </div>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 # ================================
-# 🪟 メイン画面（タブ切り替え）
+# 🔶 タブ（上部水平ボタン）
 # ================================
-st.markdown("<div class='content'>", unsafe_allow_html=True)
+tabs = {
+    "nomic": "🧬 Nomic設定",
+    "google": "🔑 Google認証",
+    "sheet": "📊 スプレッドシート",
+    "data": "🧠 データ設定",
+    "export": "🚀 出力・実行",
+}
 
+tab_cols = st.columns(len(tabs))
+
+for i, (key, label) in enumerate(tabs.items()):
+    with tab_cols[i]:
+        is_active = st.session_state.page == key
+        btn_label = f"**{label}**" if is_active else label
+        if st.button(btn_label, key=f"tab_{key}", use_container_width=True):
+            st.session_state.page = key
+
+st.markdown("<div class='tab-underline'></div>", unsafe_allow_html=True)
+
+# ================================
+# 🪟 メインコンテンツ
+# ================================
 page = st.session_state.page
 
 if page == "nomic":
@@ -61,33 +77,26 @@ elif page == "export":
     st.button("スプレッドシートへ書き出す", use_container_width=True)
     st.info("ここに出力結果を表示予定。")
 
-st.markdown("</div>", unsafe_allow_html=True)
-
 # ================================
-# 💅 CSS（白黒＋オレンジのideaflow風テーマ）
+# 💅 CSS — 白背景＆ライン強調スタイル
 # ================================
 st.markdown("""
 <style>
-body {
-    background-color: #fff;
-    color: #111;
-    font-family: 'Helvetica Neue', 'Noto Sans JP', sans-serif;
+/* 全体背景を白に */
+.stApp {
+    background-color: #ffffff !important;
 }
 
-/* ヘッダー全体 */
+/* ヘッダー */
 .header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: flex-start;
     background-color: #ffffff;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 10px 40px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    border-bottom: 2px solid #f0f0f0;
+    padding: 12px 40px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
-
-/* ロゴとアプリ名 */
 .header-left {
     display: flex;
     align-items: center;
@@ -100,52 +109,84 @@ body {
 .app-title {
     font-size: 20px;
     font-weight: 600;
-    color: #111;
+    color: #222;
 }
 
-/* タブ部分 */
-.header-tabs {
-    display: flex;
-    gap: 20px;
-}
-.tab {
-    text-decoration: none;
+/* タブ群 */
+div[data-testid="column"] button {
+    background-color: #fff;
+    border: none;
+    border-bottom: 3px solid transparent;
     color: #333;
-    font-weight: 500;
     font-size: 15px;
-    padding: 6px 10px;
-    border-bottom: 2px solid transparent;
+    font-weight: 500;
+    padding: 10px 0;
     transition: all 0.2s ease;
 }
-.tab:hover {
+div[data-testid="column"] button:hover {
     color: #ff6a00;
-    border-bottom: 2px solid #ff6a00;
+    border-bottom: 3px solid #ff6a00;
+    background-color: #fafafa;
 }
-.tab.active {
-    color: #ff6a00;
-    border-bottom: 2px solid #ff6a00;
+div[data-testid="column"] button:focus {
+    outline: none;
+}
+div[data-testid="column"] button:has(strong) {
+    color: #ff6a00 !important;
+    border-bottom: 3px solid #ff6a00 !important;
     font-weight: 600;
 }
 
-/* メインコンテンツ */
-.content {
-    padding: 40px 60px;
+/* タブ下のライン */
+.tab-underline {
+    height: 1px;
+    background-color: #ddd;
+    margin-bottom: 1.5rem;
 }
 
-/* 入力要素 */
+/* 見出し */
+h1, h2, h3 {
+    color: #222;
+    font-family: 'Helvetica Neue', 'Noto Sans JP', sans-serif;
+}
+
+/* 入力フォーム */
 input, textarea, select {
-    background-color: #fafafa !important;
+    background-color: #ffffff !important;
     border: 1px solid #ccc !important;
     color: #111 !important;
+    border-radius: 4px !important;
+    transition: 0.2s ease-in-out;
 }
-input:focus {
+input:focus, textarea:focus, select:focus {
     border-color: #ff6a00 !important;
-    outline: none !important;
+    box-shadow: 0 0 4px rgba(255, 106, 0, 0.3);
 }
+
+/* ボタン */
 button[kind="primary"] {
     background-color: #ff6a00 !important;
     color: white !important;
     border: none !important;
+    border-radius: 4px !important;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(255, 106, 0, 0.3);
+}
+button[kind="primary"]:hover {
+    background-color: #e85c00 !important;
+}
+
+/* 情報ボックス */
+[data-testid="stAlert"] {
+    background-color: #fafafa !important;
+    border-left: 4px solid #ff6a00 !important;
+    color: #333 !important;
+}
+
+/* 区切り */
+hr {
+    border: none;
+    border-bottom: 1px solid #eee;
 }
 </style>
 """, unsafe_allow_html=True)
