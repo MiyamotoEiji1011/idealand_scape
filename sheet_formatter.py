@@ -269,7 +269,7 @@ def set_custom_column_widths(worksheet):
 def apply_dropdown_with_color_to_column_C(worksheet, df):
     """
     C列にカテゴリプルダウンを自動設定し、
-    Smart Dropdown UI（楕円チップ型）＋淡い背景＋濃い文字色を設定。
+    Smart Dropdown UI（楕円チップ型）＋淡い背景＋同系色の濃い文字色を設定。
     """
     if df.empty:
         return
@@ -295,7 +295,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
     num_rows = len(df) + 1
     col_index = 2  # C列（A=0, B=1, C=2）
 
-    # --- データ検証ルールの設定（Smart UI対応）---
+    # --- データ検証ルール（Smart Dropdown）---
     dropdown_request = {
         "setDataValidation": {
             "range": {
@@ -310,7 +310,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
                     "type": "ONE_OF_LIST",
                     "values": [{"userEnteredValue": v} for v in categories],
                 },
-                "showCustomUi": True,  # ✅ Smart Dropdown UI（楕円UI）を有効化
+                "showCustomUi": True,
                 "strict": True,
             },
         }
@@ -318,28 +318,28 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
 
     requests = [dropdown_request]
 
-    # --- カラー生成ユーティリティ ---
+    # --- カラー計算 ---
     def hsl_to_rgb(h, s, l):
         r, g, b = colorsys.hls_to_rgb(h, l, s)
         return {"red": r, "green": g, "blue": b}
 
-    def darker(rgb, factor=0.8):
-        """背景色よりも少し濃いトーンのテキスト色を生成"""
-        return {
-            "red": rgb["red"] * factor,
-            "green": rgb["green"] * factor,
-            "blue": rgb["blue"] * factor,
-        }
+    def adjust_text_color(h, s, l):
+        """
+        背景色より少し濃く＆彩度を上げて同系統の文字色を生成。
+        """
+        text_l = max(0, l - 0.35)     # 明度を下げてコントラストをつける
+        text_s = min(1, s + 0.25)     # 彩度を上げて“灰色化”を防ぐ
+        return hsl_to_rgb(h, text_s, text_l)
 
-    # --- 背景は明るめ、文字色は自動的に濃く ---
+    # 背景は淡く・文字は同系濃色
     n = max(1, len(categories))
-    palette = [hsl_to_rgb(i / n, 0.45, 0.88) for i in range(n)]  # ←明るめ背景
-    text_colors = [darker(p, 0.45) for p in palette]  # ←濃いテキスト色
+    bg_palette = [hsl_to_rgb(i / n, 0.45, 0.88) for i in range(n)]
+    text_palette = [adjust_text_color(i / n, 0.45, 0.88) for i in range(n)]
 
-    # --- カテゴリごとの条件付き書式を設定 ---
+    # --- 条件付き書式設定 ---
     for idx, cat in enumerate(categories):
-        bg = palette[idx]
-        fg = text_colors[idx]
+        bg = bg_palette[idx]
+        fg = text_palette[idx]
 
         requests.append({
             "addConditionalFormatRule": {
@@ -360,7 +360,7 @@ def apply_dropdown_with_color_to_column_C(worksheet, df):
                             "backgroundColor": bg,
                             "textFormat": {
                                 "foregroundColor": fg,
-                                "bold": True
+                                "bold": True,
                             },
                         },
                     },
