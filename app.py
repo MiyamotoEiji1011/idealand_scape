@@ -9,9 +9,16 @@ from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
 from sheet_formatter import (
     apply_header_style_green,
+    apply_filter_to_header,
+    apply_green_outer_border,
+    apply_wrap_text_to_header_row,
+    apply_wrap_text_to_column_E,
+    set_custom_column_widths,
+    apply_vertical_group_borders,
     apply_dropdown_with_color_to_column_C,
     apply_sheet_design
 )
+
 # =========================================================
 # 🌍 Nomic Atlasデータ取得
 # =========================================================
@@ -38,7 +45,10 @@ def google_login():
     """Google Service Accountで認証"""
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        scope = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive",
+        ]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
         st.success("✅ Google Service Account Loaded Successfully!")
@@ -61,20 +71,23 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         spreadsheet = client.open_by_key(spreadsheet_id)
         worksheet = spreadsheet.worksheet(worksheet_name)
 
+        # --- データ整形 ---
         df_master = prepare_master_dataframe(map_data)
 
+        # --- 書き込み前に初期化 ---
         worksheet.clear()
+
+        # --- データフレーム書き込み ---
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
+        # --- フォーマット適用 ---
         apply_header_style_green(worksheet, df_master)
-        # 以下の行は削除またはコメントアウト
-        # apply_filter_to_header(worksheet, df_master)
-        # apply_green_outer_border(worksheet, df_master)
-        # apply_wrap_text_to_header_row(worksheet, df_master)
-        # apply_wrap_text_to_column_E(worksheet, df_master)
-        # set_custom_column_widths(worksheet)
-        # apply_vertical_group_borders(worksheet, df_master)
-
+        apply_filter_to_header(worksheet, df_master)
+        apply_green_outer_border(worksheet, df_master)
+        apply_wrap_text_to_header_row(worksheet, df_master)
+        apply_wrap_text_to_column_E(worksheet, df_master)
+        set_custom_column_widths(worksheet)
+        apply_vertical_group_borders(worksheet, df_master)
         apply_dropdown_with_color_to_column_C(worksheet, df_master)
         apply_sheet_design(worksheet, df_master)
 
@@ -86,7 +99,7 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
 # =========================================================
 # 🏗️ Streamlit UI構築
 # =========================================================
-st.title("Demo App")
+st.title("📊 Nomic Atlas → Google Sheets Connector")
 
 # --- Nomic Atlas Settings ---
 st.subheader("Nomic Atlas Settings")
@@ -97,21 +110,21 @@ map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
 # --- Google Sheets Settings ---
 st.subheader("Google Sheets Settings")
-spreadsheet_id = st.text_input("Spreadsheet ID", value="spreadsheets/d/1ADT9nsSDqCR45-gGxNaQGccxOT2HIbni4Xqw_PvncqQ")
+spreadsheet_id = st.text_input("Spreadsheet ID", value="1pt9jeFguPEjw_aWGpHoGVPx4YV49Qp_ngURRK17926M")
 worksheet_name = st.text_input("Worksheet Name", value="シート1")
 
 # --- Buttons ---
-if st.button("Fetch Nomic Dataset"):
+if st.button("1️⃣ Fetch Nomic Dataset"):
     map_data = fetch_nomic_dataset(token, domain, map_name)
     if map_data:
         st.session_state.map_data = map_data
 
-if st.button("Google Login"):
+if st.button("2️⃣ Google Login"):
     gclient = google_login()
     if gclient:
         st.session_state.gclient = gclient
 
-if st.button("Create / Update Google Sheet"):
+if st.button("3️⃣ Create / Update Google Sheet"):
     if "map_data" not in st.session_state:
         st.error("❌ Please fetch the Nomic dataset first.")
     elif "gclient" not in st.session_state:
