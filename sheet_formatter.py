@@ -266,114 +266,166 @@ def set_custom_column_widths(worksheet):
 # ===============================
 # 🟢 C列のプルダウン＋色分け
 # ===============================
-def apply_dropdown_with_color_to_column_C(worksheet, df):
+def apply_dropdowns_for_columns_C_and_D(worksheet, df):
     """
-    C列にカテゴリプルダウンを自動設定し、
-    Smart Dropdown UI（楕円チップ型）＋淡い背景＋同系色の濃い文字色を設定。
+    C列: Smart Dropdown（淡い背景＋同系文字色）
+    D列: Smart Dropdown（背景そのまま・黒文字）
     """
     if df.empty:
         return
 
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
+    num_rows = len(df) + 1
 
-    # --- カテゴリ抽出 ---
+    # =========================================================
+    # 🟢 C列：カテゴリ別カラー＋Smart Dropdown
+    # =========================================================
     try:
         c_series = df.iloc[:, 2]
     except Exception:
-        return
+        c_series = None
 
-    categories = sorted(set([
-        str(v).strip()
-        for v in c_series.dropna()
-        if str(v).strip() not in ["", "None", "nan"]
-    ]))
+    if c_series is not None:
+        categories = sorted(set([
+            str(v).strip()
+            for v in c_series.dropna()
+            if str(v).strip() not in ["", "None", "nan"]
+        ]))
 
-    if not categories:
-        return
+        if categories:
+            col_index_c = 2  # C列
 
-    num_rows = len(df) + 1
-    col_index = 2  # C列（A=0, B=1, C=2）
-
-    # --- データ検証ルール（Smart Dropdown）---
-    dropdown_request = {
-        "setDataValidation": {
-            "range": {
-                "sheetId": worksheet.id,
-                "startRowIndex": 1,
-                "endRowIndex": num_rows,
-                "startColumnIndex": col_index,
-                "endColumnIndex": col_index + 1,
-            },
-            "rule": {
-                "condition": {
-                    "type": "ONE_OF_LIST",
-                    "values": [{"userEnteredValue": v} for v in categories],
-                },
-                "showCustomUi": True,
-                "strict": True,
-            },
-        }
-    }
-
-    requests = [dropdown_request]
-
-    # --- カラー計算 ---
-    def hsl_to_rgb(h, s, l):
-        r, g, b = colorsys.hls_to_rgb(h, l, s)
-        return {"red": r, "green": g, "blue": b}
-
-    def adjust_text_color(h, s, l):
-        """
-        背景色より少し濃く＆彩度を上げて同系統の文字色を生成。
-        """
-        text_l = max(0, l - 0.5)     # 明度を下げてコントラストをつける
-        text_s = min(1, s + 0.25)     # 彩度を上げて“灰色化”を防ぐ
-        return hsl_to_rgb(h, text_s, text_l)
-
-    # 背景は淡く・文字は同系濃色
-    n = max(1, len(categories))
-    bg_palette = [hsl_to_rgb(i / n, 0.45, 0.88) for i in range(n)]
-    text_palette = [adjust_text_color(i / n, 0.45, 0.88) for i in range(n)]
-
-    # --- 条件付き書式設定 ---
-    for idx, cat in enumerate(categories):
-        bg = bg_palette[idx]
-        fg = text_palette[idx]
-
-        requests.append({
-            "addConditionalFormatRule": {
-                "rule": {
-                    "ranges": [{
+            dropdown_c = {
+                "setDataValidation": {
+                    "range": {
                         "sheetId": worksheet.id,
                         "startRowIndex": 1,
                         "endRowIndex": num_rows,
-                        "startColumnIndex": col_index,
-                        "endColumnIndex": col_index + 1,
-                    }],
-                    "booleanRule": {
+                        "startColumnIndex": col_index_c,
+                        "endColumnIndex": col_index_c + 1,
+                    },
+                    "rule": {
                         "condition": {
-                            "type": "TEXT_EQ",
-                            "values": [{"userEnteredValue": cat}],
+                            "type": "ONE_OF_LIST",
+                            "values": [{"userEnteredValue": v} for v in categories],
                         },
-                        "format": {
-                            "backgroundColor": bg,
-                            "textFormat": {
-                                "foregroundColor": fg,
-                                "bold": True,
+                        "showCustomUi": True,
+                        "strict": True,
+                    },
+                }
+            }
+
+            requests = [dropdown_c]
+
+            def hsl_to_rgb(h, s, l):
+                r, g, b = colorsys.hls_to_rgb(h, l, s)
+                return {"red": r, "green": g, "blue": b}
+
+            def adjust_text_color(h, s, l):
+                text_l = max(0, l - 0.65)
+                text_s = min(1, s + 0.25)
+                return hsl_to_rgb(h, text_s, text_l)
+
+            n = max(1, len(categories))
+            bg_palette = [hsl_to_rgb(i / n, 0.45, 0.88) for i in range(n)]
+            text_palette = [adjust_text_color(i / n, 0.45, 0.88) for i in range(n)]
+
+            for idx, cat in enumerate(categories):
+                bg = bg_palette[idx]
+                fg = text_palette[idx]
+
+                requests.append({
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [{
+                                "sheetId": worksheet.id,
+                                "startRowIndex": 1,
+                                "endRowIndex": num_rows,
+                                "startColumnIndex": col_index_c,
+                                "endColumnIndex": col_index_c + 1,
+                            }],
+                            "booleanRule": {
+                                "condition": {
+                                    "type": "TEXT_EQ",
+                                    "values": [{"userEnteredValue": cat}],
+                                },
+                                "format": {
+                                    "backgroundColor": bg,
+                                    "textFormat": {"foregroundColor": fg, "bold": True},
+                                },
                             },
                         },
+                        "index": 0,
+                    }
+                })
+
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet.id, body={"requests": requests}
+            ).execute()
+
+    # =========================================================
+    # ⚫ D列：背景そのまま・黒文字・Smart Dropdown（None除外）
+    # =========================================================
+    try:
+        d_series = df.iloc[:, 3]
+    except Exception:
+        d_series = None
+
+    if d_series is not None:
+        d_categories = sorted(set([
+            str(v).strip()
+            for v in d_series.dropna()
+            if str(v).strip() not in ["", "None", "nan"]
+        ]))
+
+        if d_categories:
+            col_index_d = 3  # D列
+
+            dropdown_d = {
+                "setDataValidation": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 1,
+                        "endRowIndex": num_rows,
+                        "startColumnIndex": col_index_d,
+                        "endColumnIndex": col_index_d + 1,
                     },
-                },
-                "index": 0,
+                    "rule": {
+                        "condition": {
+                            "type": "ONE_OF_LIST",
+                            "values": [{"userEnteredValue": v} for v in d_categories],
+                        },
+                        "showCustomUi": True,
+                        "strict": True,
+                    },
+                }
             }
-        })
 
-    # --- 一括送信 ---
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet.id, body={"requests": requests}
-    ).execute()
+            # テキスト色を黒に設定（背景は触らない）
+            black = {"red": 0, "green": 0, "blue": 0}
+            text_style = {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 1,
+                        "endRowIndex": num_rows,
+                        "startColumnIndex": col_index_d,
+                        "endColumnIndex": col_index_d + 1,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "textFormat": {"foregroundColor": black, "bold": True}
+                        }
+                    },
+                    "fields": "userEnteredFormat.textFormat",
+                }
+            }
 
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet.id,
+                body={"requests": [dropdown_d, text_style]},
+            ).execute()
 
 
 # ===============================
