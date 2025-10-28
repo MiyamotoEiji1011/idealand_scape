@@ -4,11 +4,19 @@ from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
+import pandas as pd
 from gspread_dataframe import set_with_dataframe
 from data_processing import prepare_master_dataframe
-import requests
-import time
-
+from sheet_formatter import (
+    apply_header_style_green,
+    apply_filter_to_header,
+    apply_green_outer_border,
+    apply_wrap_text_to_header_row,
+    apply_wrap_text_to_column_E,
+    apply_vertical_group_borders,
+    apply_dropdown_with_color_to_column_C,  # ← 新関数
+    set_custom_column_widths,
+)
 
 # =========================================================
 # 🌍 Nomic Atlasデータ取得
@@ -36,10 +44,7 @@ def google_login():
     """Google Service Accountで認証"""
     try:
         service_account_info = json.loads(st.secrets["google_service_account"]["value"])
-        scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
-        ]
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
         client = gspread.authorize(creds)
         st.success("✅ Google Service Account Loaded Successfully!")
@@ -50,13 +55,13 @@ def google_login():
 
 
 # =========================================================
-# 📊 Google Sheetsへデータ書き込みのみ
+# 📊 Google Sheets書き込み処理
 # =========================================================
 def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_data):
-    """Googleスプレッドシートにデータのみ書き込む"""
+    """Googleスプレッドシートにデータを書き込む"""
     if client is None:
         st.error("❌ Google client not initialized.")
-        return False
+        return
 
     try:
         spreadsheet = client.open_by_key(spreadsheet_id)
@@ -67,40 +72,24 @@ def write_to_google_sheet(client, spreadsheet_id: str, worksheet_name: str, map_
         worksheet.clear()
         set_with_dataframe(worksheet, df_master, include_column_header=True, row=1, col=1)
 
-        st.success("✅ Data successfully written to Google Sheet!")
-        return True
+        apply_header_style_green(worksheet, df_master)
+        apply_filter_to_header(worksheet, df_master)
+        apply_green_outer_border(worksheet, df_master)
+        apply_wrap_text_to_header_row(worksheet, df_master) 
+        apply_wrap_text_to_column_E(worksheet, df_master)
+        apply_vertical_group_borders(worksheet, df_master)
+        apply_dropdown_with_color_to_column_C(worksheet, df_master) 
+        set_custom_column_widths(worksheet)
 
+        st.success("✅ Successfully wrote data to Google Sheet!")
     except Exception as e:
         st.error(f"❌ Failed to write sheet: {e}")
-        return False
-
-
-# =========================================================
-# 🚀 GAS呼び出し処理
-# =========================================================
-def trigger_gas_dropdown_api(sheet_name: str, spreadsheet_id: str, gas_endpoint: str):
-    """3分後にGASを呼び出してプルダウンUIを適用"""
-    st.info("⏳ Waiting 3 minutes before calling GAS...")
-    time.sleep(180)  # 3分待機
-
-    try:
-        payload = {
-            "sheet_name": sheet_name,
-            "spreadsheet_id": spreadsheet_id,
-        }
-        response = requests.post(gas_endpoint, data=payload, timeout=30)
-        if response.status_code == 200:
-            st.success("✅ GAS successfully triggered for dropdown setup!")
-        else:
-            st.warning(f"⚠️ GAS returned status {response.status_code}: {response.text}")
-    except Exception as e:
-        st.error(f"❌ Failed to call GAS: {e}")
 
 
 # =========================================================
 # 🏗️ Streamlit UI構築
 # =========================================================
-st.title("🧩 Dataset → Google Sheets Automation (No Design)")
+st.title("Demo App")
 
 # --- Nomic Atlas Settings ---
 st.subheader("Nomic Atlas Settings")
@@ -111,18 +100,8 @@ map_name = st.text_input("Map Name", value="chizai-capcom-from-500")
 
 # --- Google Sheets Settings ---
 st.subheader("Google Sheets Settings")
-spreadsheet_id = st.text_input(
-    "Spreadsheet ID", value="1XDAGnEjY8XpDC9ohtaHgo4ECZG8OgNUNJo-ZrCksRDI"
-)
+spreadsheet_id = st.text_input("Spreadsheet ID", value="spreadsheets/d/1ADT9nsSDqCR45-gGxNaQGccxOT2HIbni4Xqw_PvncqQ")
 worksheet_name = st.text_input("Worksheet Name", value="シート1")
-
-# --- GAS Settings ---
-st.subheader("Apps Script Settings")
-gas_endpoint = st.text_input(
-    "GAS Web App URL",
-    value="https://script.google.com/macros/s/AKfycbEXAMPLE_ID/exec",
-    help="GASをWebアプリとしてデプロイしたURLを入力してください",
-)
 
 # --- Buttons ---
 if st.button("Fetch Nomic Dataset"):
@@ -135,17 +114,15 @@ if st.button("Google Login"):
     if gclient:
         st.session_state.gclient = gclient
 
-if st.button("Create Sheet and Call GAS"):
+if st.button("Create / Update Google Sheet"):
     if "map_data" not in st.session_state:
         st.error("❌ Please fetch the Nomic dataset first.")
     elif "gclient" not in st.session_state:
         st.error("❌ Please log in to Google first.")
     else:
-        success = write_to_google_sheet(
+        write_to_google_sheet(
             st.session_state.gclient,
             spreadsheet_id,
             worksheet_name,
             st.session_state.map_data,
         )
-        if success and gas_endpoint:
-            trigger_gas_dropdown_api(worksheet_name, spreadsheet_id, gas_endpoint)
