@@ -24,8 +24,14 @@ with st.sidebar:
     }
 
     for key, label in pages.items():
-        if st.button(label, use_container_width=True):
+        is_active = st.session_state.page == key
+        button_class = "active-button" if is_active else "sidebar-button"
+        if st.button(label, key=f"btn_{key}", use_container_width=True):
             st.session_state.page = key
+        st.markdown(
+            f"<style>div[data-testid='stButton'][key='btn_{key}'] button {{{'background-color:#ff4b4b; color:white;' if is_active else ''}}}</style>",
+            unsafe_allow_html=True
+        )
 
 # ================================
 # 🪟 メイン画面
@@ -62,7 +68,7 @@ elif page == "export":
     st.info("ここに出力結果を表示予定。")
 
 # ================================
-# 💅 外部CSS読み込み
+# 💅 CSSを外部から読み込み
 # ================================
 def local_css(file_name):
     with open(file_name, encoding="utf-8") as f:
