@@ -84,7 +84,7 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
     num_rows = len(df)
     num_cols = len(df.columns)
 
-    green = {"red": 0.36, "green": 0.66, "blue": 0.38}
+    green = {"red": 53/255, "green": 104/255, "blue": 84/255}
 
     # --- まず全体の内側線を削除（白ではなく完全非表示） ---
     clear_inner_lines = {
@@ -266,8 +266,6 @@ def set_custom_column_widths(worksheet):
 # ===============================
 # 🟢 C列のプルダウン＋色分け
 # ===============================
-from googleapiclient.discovery import build
-import colorsys
 
 def apply_dropdowns_for_columns_C_and_D(worksheet, df):
     """
