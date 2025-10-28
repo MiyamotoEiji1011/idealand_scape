@@ -266,85 +266,84 @@ def set_custom_column_widths(worksheet):
 # ===============================
 # 🟢 C列のプルダウン＋色分け
 # ===============================
+from googleapiclient.discovery import build
+import colorsys
+
 def apply_dropdowns_for_columns_C_and_D(worksheet, df):
     """
-    C列: Smart Dropdown（淡い背景＋同系文字色）
-    D列: Smart Dropdown（背景そのまま・文字色 #666666）
+    C列: Smart Dropdown（淡い背景＋同系色文字）
+    D列: 値が入っている行にだけ Smart Dropdown を付与（背景は触らない／文字は #666666）
+         "nan"/"None" はシート上から消去（空文字に置換）
     """
     if df.empty:
         return
 
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
-    num_rows = len(df) + 1
+    num_rows = len(df) + 1  # ヘッダー含む
 
-    # =========================================================
-    # 🟢 C列：淡い背景＋Smart Dropdown
-    # =========================================================
+    # ---------------------------
+    # C列：淡い背景にトーンダウン（lを上げる）
+    # ---------------------------
     try:
         c_series = df.iloc[:, 2]
     except Exception:
         c_series = None
 
     if c_series is not None:
-        categories = sorted(set([
-            str(v).strip()
-            for v in c_series.dropna()
-            if str(v).strip() not in ["", "None", "nan"]
+        categories_c = sorted(set([
+            s for s in (str(v).strip() for v in c_series.dropna())
+            if s not in ("", "None", "nan")
         ]))
 
-        if categories:
-            col_index_c = 2  # C列
-
-            dropdown_c = {
+        if categories_c:
+            col_c = 2  # C
+            # data validation
+            reqs_c = [{
                 "setDataValidation": {
                     "range": {
                         "sheetId": worksheet.id,
                         "startRowIndex": 1,
                         "endRowIndex": num_rows,
-                        "startColumnIndex": col_index_c,
-                        "endColumnIndex": col_index_c + 1,
+                        "startColumnIndex": col_c,
+                        "endColumnIndex": col_c + 1,
                     },
                     "rule": {
                         "condition": {
                             "type": "ONE_OF_LIST",
-                            "values": [{"userEnteredValue": v} for v in categories],
+                            "values": [{"userEnteredValue": v} for v in categories_c],
                         },
                         "showCustomUi": True,
                         "strict": True,
                     },
                 }
-            }
+            }]
 
-            requests = [dropdown_c]
-
+            # 色ユーティリティ
             def hsl_to_rgb(h, s, l):
                 r, g, b = colorsys.hls_to_rgb(h, l, s)
                 return {"red": r, "green": g, "blue": b}
 
-            def adjust_text_color(h, s, l):
+            def text_color_from(h, s, l):
+                # 背景をかなり淡く (l=0.94, s=0.38) にし、文字は同系色で濃く
                 text_l = max(0, l - 0.65)
                 text_s = min(1, s + 0.25)
                 return hsl_to_rgb(h, text_s, text_l)
 
-            n = max(1, len(categories))
-            # 🎨 背景をより淡く（明度 0.92）
-            bg_palette = [hsl_to_rgb(i / n, 0.40, 0.92) for i in range(n)]
-            text_palette = [adjust_text_color(i / n, 0.40, 0.92) for i in range(n)]
+            n = max(1, len(categories_c))
+            bg_palette  = [hsl_to_rgb(i / n, 0.38, 0.94) for i in range(n)]  # ←さらに淡く
+            txt_palette = [text_color_from(i / n, 0.38, 0.94) for i in range(n)]
 
-            for idx, cat in enumerate(categories):
-                bg = bg_palette[idx]
-                fg = text_palette[idx]
-
-                requests.append({
+            for idx, cat in enumerate(categories_c):
+                reqs_c.append({
                     "addConditionalFormatRule": {
                         "rule": {
                             "ranges": [{
                                 "sheetId": worksheet.id,
                                 "startRowIndex": 1,
                                 "endRowIndex": num_rows,
-                                "startColumnIndex": col_index_c,
-                                "endColumnIndex": col_index_c + 1,
+                                "startColumnIndex": col_c,
+                                "endColumnIndex": col_c + 1,
                             }],
                             "booleanRule": {
                                 "condition": {
@@ -352,8 +351,8 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                                     "values": [{"userEnteredValue": cat}],
                                 },
                                 "format": {
-                                    "backgroundColor": bg,
-                                    "textFormat": {"foregroundColor": fg, "bold": True},
+                                    "backgroundColor": bg_palette[idx],
+                                    "textFormat": {"foregroundColor": txt_palette[idx], "bold": True},
                                 },
                             },
                         },
@@ -362,81 +361,123 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                 })
 
             service.spreadsheets().batchUpdate(
-                spreadsheetId=spreadsheet.id, body={"requests": requests}
+                spreadsheetId=spreadsheet.id, body={"requests": reqs_c}
             ).execute()
 
-    # =========================================================
-    # ⚫ D列：背景そのまま・文字色 #666666・Smart Dropdown（None除外）
-    # =========================================================
+    # ---------------------------
+    # D列："nan"/"None" を空白化 → 非空行のみにプルダウン／#666666を適用
+    # ---------------------------
     try:
         d_series = df.iloc[:, 3]
     except Exception:
         d_series = None
 
     if d_series is not None:
-        # None, NaN, 空白を除外したユニークカテゴリ
+        # 1) まずシート上の "nan" / "None" を空文字に置換（全域）
+        col_d = 3  # D
+        d_range = {
+            "sheetId": worksheet.id,
+            "startRowIndex": 1,
+            "endRowIndex": num_rows,
+            "startColumnIndex": col_d,
+            "endColumnIndex": col_d + 1,
+        }
+        cleanup_reqs = [
+            {
+                "findReplace": {
+                    "range": d_range,
+                    "find": "nan",
+                    "replacement": "",
+                    "matchCase": False,
+                    "matchEntireCell": True,
+                    "searchByRegex": False,
+                }
+            },
+            {
+                "findReplace": {
+                    "range": d_range,
+                    "find": "None",
+                    "replacement": "",
+                    "matchCase": False,
+                    "matchEntireCell": True,
+                    "searchByRegex": False,
+                }
+            },
+        ]
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet.id, body={"requests": cleanup_reqs}
+        ).execute()
+
+        # 2) Python側の d_series から非空行を抽出（空白/None/nan 除外）
+        non_empty_rows = [i for i, v in enumerate(d_series, start=2)  # シート行番号（ヘッダー1なので+1 → +1でもう一段）
+                          if str(v).strip() not in ("", "None", "nan")]
+
+        # カテゴリ候補（プルダウンのリスト）も None/空白を除外
         d_categories = sorted(set([
-            str(v).strip()
-            for v in d_series.dropna()
-            if str(v).strip() not in ["", "None", "nan"]
+            s for s in (str(v).strip() for v in d_series.dropna())
+            if s not in ("", "None", "nan")
         ]))
 
-        if d_categories:
-            col_index_d = 3  # D列
+        if non_empty_rows and d_categories:
+            # 連続ブロックに圧縮してリクエスト数を抑制
+            blocks = []
+            start = prev = None
+            for r in non_empty_rows:
+                if start is None:
+                    start = prev = r
+                elif r == prev + 1:
+                    prev = r
+                else:
+                    blocks.append((start, prev))
+                    start = prev = r
+            if start is not None:
+                blocks.append((start, prev))
 
-            # プルダウン設定
-            dropdown_d = {
-                "setDataValidation": {
-                    "range": {
-                        "sheetId": worksheet.id,
-                        "startRowIndex": 1,
-                        "endRowIndex": num_rows,
-                        "startColumnIndex": col_index_d,
-                        "endColumnIndex": col_index_d + 1,
-                    },
-                    "rule": {
-                        "condition": {
-                            "type": "ONE_OF_LIST",
-                            "values": [{"userEnteredValue": v} for v in d_categories],
-                        },
-                        "showCustomUi": True,
-                        "strict": True,
-                    },
-                }
-            }
-
-            # テキスト色を #666666 に設定（背景は触らない）
+            # 3) 各ブロックにだけ DataValidation と テキスト色(#666666) を適用
             gray_text = {"red": 102/255, "green": 102/255, "blue": 102/255}
-            text_style = {
-                "repeatCell": {
-                    "range": {
-                        "sheetId": worksheet.id,
-                        "startRowIndex": 1,
-                        "endRowIndex": num_rows,
-                        "startColumnIndex": col_index_d,
-                        "endColumnIndex": col_index_d + 1,
-                    },
-                    "cell": {
-                        "userEnteredFormat": {
-                            "textFormat": {"foregroundColor": gray_text, "bold": False}
-                        }
-                    },
-                    "fields": "userEnteredFormat.textFormat",
-                }
-            }
+            reqs_d = []
+            for (r1, r2) in blocks:
+                reqs_d.append({
+                    "setDataValidation": {
+                        "range": {
+                            "sheetId": worksheet.id,
+                            "startRowIndex": r1 - 1,
+                            "endRowIndex": r2,          # endは非包含なのでそのまま
+                            "startColumnIndex": col_d,
+                            "endColumnIndex": col_d + 1,
+                        },
+                        "rule": {
+                            "condition": {
+                                "type": "ONE_OF_LIST",
+                                "values": [{"userEnteredValue": v} for v in d_categories],
+                            },
+                            "showCustomUi": True,
+                            "strict": True,
+                        },
+                    }
+                })
+                reqs_d.append({
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": worksheet.id,
+                            "startRowIndex": r1 - 1,
+                            "endRowIndex": r2,
+                            "startColumnIndex": col_d,
+                            "endColumnIndex": col_d + 1,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "textFormat": {"foregroundColor": gray_text}
+                            }
+                        },
+                        "fields": "userEnteredFormat.textFormat",
+                    }
+                })
 
-            # 実際のデータを確認し、None/空白の行はスキップ
-            non_empty_rows = [
-                idx for idx, val in enumerate(d_series)
-                if str(val).strip() not in ["", "None", "nan"]
-            ]
-
-            if non_empty_rows:
-                # プルダウンと文字色適用を一括送信
-                service.spreadsheets().batchUpdate(
-                    spreadsheetId=spreadsheet.id,
-                    body={"requests": [dropdown_d, text_style]},
-                ).execute()
+            service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet.id, body={"requests": reqs_d}
+            ).execute()
+        # 非空行が無い場合はスルー（プルダウンも付けない）
 
 
 
