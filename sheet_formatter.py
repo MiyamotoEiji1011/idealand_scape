@@ -269,7 +269,7 @@ def set_custom_column_widths(worksheet):
 def apply_dropdowns_for_columns_C_and_D(worksheet, df):
     """
     C列: Smart Dropdown（淡い背景＋同系文字色）
-    D列: Smart Dropdown（背景そのまま・黒文字）
+    D列: Smart Dropdown（背景そのまま・文字色 #666666）
     """
     if df.empty:
         return
@@ -279,7 +279,7 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
     num_rows = len(df) + 1
 
     # =========================================================
-    # 🟢 C列：カテゴリ別カラー＋Smart Dropdown
+    # 🟢 C列：淡い背景＋Smart Dropdown
     # =========================================================
     try:
         c_series = df.iloc[:, 2]
@@ -328,8 +328,9 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                 return hsl_to_rgb(h, text_s, text_l)
 
             n = max(1, len(categories))
-            bg_palette = [hsl_to_rgb(i / n, 0.45, 0.88) for i in range(n)]
-            text_palette = [adjust_text_color(i / n, 0.45, 0.88) for i in range(n)]
+            # 🎨 背景をより淡く（明度 0.92）
+            bg_palette = [hsl_to_rgb(i / n, 0.40, 0.92) for i in range(n)]
+            text_palette = [adjust_text_color(i / n, 0.40, 0.92) for i in range(n)]
 
             for idx, cat in enumerate(categories):
                 bg = bg_palette[idx]
@@ -365,7 +366,7 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
             ).execute()
 
     # =========================================================
-    # ⚫ D列：背景そのまま・黒文字・Smart Dropdown（None除外）
+    # ⚫ D列：背景そのまま・文字色 #666666・Smart Dropdown（None除外）
     # =========================================================
     try:
         d_series = df.iloc[:, 3]
@@ -373,6 +374,7 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
         d_series = None
 
     if d_series is not None:
+        # None, NaN, 空白を除外したユニークカテゴリ
         d_categories = sorted(set([
             str(v).strip()
             for v in d_series.dropna()
@@ -382,6 +384,7 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
         if d_categories:
             col_index_d = 3  # D列
 
+            # プルダウン設定
             dropdown_d = {
                 "setDataValidation": {
                     "range": {
@@ -402,8 +405,8 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                 }
             }
 
-            # テキスト色を黒に設定（背景は触らない）
-            black = {"red": 0, "green": 0, "blue": 0}
+            # テキスト色を #666666 に設定（背景は触らない）
+            gray_text = {"red": 102/255, "green": 102/255, "blue": 102/255}
             text_style = {
                 "repeatCell": {
                     "range": {
@@ -415,17 +418,26 @@ def apply_dropdowns_for_columns_C_and_D(worksheet, df):
                     },
                     "cell": {
                         "userEnteredFormat": {
-                            "textFormat": {"foregroundColor": black, "bold": True}
+                            "textFormat": {"foregroundColor": gray_text, "bold": False}
                         }
                     },
                     "fields": "userEnteredFormat.textFormat",
                 }
             }
 
-            service.spreadsheets().batchUpdate(
-                spreadsheetId=spreadsheet.id,
-                body={"requests": [dropdown_d, text_style]},
-            ).execute()
+            # 実際のデータを確認し、None/空白の行はスキップ
+            non_empty_rows = [
+                idx for idx, val in enumerate(d_series)
+                if str(val).strip() not in ["", "None", "nan"]
+            ]
+
+            if non_empty_rows:
+                # プルダウンと文字色適用を一括送信
+                service.spreadsheets().batchUpdate(
+                    spreadsheetId=spreadsheet.id,
+                    body={"requests": [dropdown_d, text_style]},
+                ).execute()
+
 
 
 # ===============================
