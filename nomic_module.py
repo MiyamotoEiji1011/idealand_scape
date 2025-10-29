@@ -25,7 +25,7 @@ def create_nomic_dataset(token, domain, map_url):
         map_id = extract_map_name(map_url)
         dataset = AtlasDataset(map_id)
 
-        df_meta, df_topics, df_data = get_map_data(dataset)
+        df_meta, df_topics, df_data = get_map_data(dataset.maps[0])
         df_master = prepare_master_dataframe(df_meta, df_topics, df_data)
         return df_master, None
     except Exception as e:
