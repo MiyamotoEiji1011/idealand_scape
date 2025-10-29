@@ -10,7 +10,7 @@
         "A": {
             "fontFamily": "Roboto",
             "fontSize": 10,
-            "bold": false,
+            "bold": true,
             "italic": false,
             "foregroundColor": "#434343",
             "wrap": false,
@@ -22,7 +22,7 @@
         "B": {
             "fontFamily": "Roboto",
             "fontSize": 10,
-            "bold": false,
+            "bold": true,
             "italic": false,
             "foregroundColor": "#434343",
             "wrap": false,
@@ -349,6 +349,12 @@
         "has_planet": true,
         "planet_color": "#356854",
         "start_row": 1,
-        "start_col": 1
+        "start_col": 1,
+        "group_right_edges": [
+            5,
+            10,
+            15,
+            20
+        ]
     }
 }
