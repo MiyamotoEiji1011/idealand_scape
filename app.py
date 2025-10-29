@@ -100,6 +100,7 @@ with col2:
         st.session_state.output_sheet_url = st.text_input("Sheet URL", value=st.session_state.output_sheet_url)
         st.session_state.output_sheet_name = st.text_input("Sheet Name", value=st.session_state.output_sheet_name)
 
+        # Run button
         if st.button("Run Output"):
             df_master, err = nomic_module.create_nomic_dataset(
                 st.session_state.nomic_api_token,
@@ -108,22 +109,29 @@ with col2:
             )
 
             if err or df_master is None:
-                st.error(f"❌ データ取得に失敗しました: {err}")
+                st.error(f"❌ Failed to fetch Nomic data: {err}")
             else:
-                st.success(f"✅ Exported to {st.session_state.output_sheet_name or 'Sheet not specified'}")
+                st.session_state.df_master = df_master
+                st.success(f"✅ Data exported to {st.session_state.output_sheet_name or 'unspecified sheet'}")
 
-                # --- DataFrameをCSVとしてダウンロード可能に ---
-                csv_data = df_master.to_csv(index=False).encode("utf-8-sig")
+        # ownload button
+        if st.button("Download CSV"):
+            if "df_master" in st.session_state and st.session_state.df_master is not None:
+                csv_data = st.session_state.df_master.to_csv(index=False).encode("utf-8-sig")
                 st.download_button(
-                    label="📥 CSVとしてダウンロード",
+                    label="Download CSV file",
                     data=csv_data,
                     file_name="nomic_master_data.csv",
                     mime="text/csv",
                 )
+            else:
+                st.warning("⚠️ No CSV data available. Please run 'Run Output' first.")
 
-                # --- 画面にプレビューを表示 ---
-                st.dataframe(df_master.head(20))
+        # Data preview
+        if "df_master" in st.session_state and st.session_state.df_master is not None:
+            st.dataframe(st.session_state.df_master.head(20))
 
+        
     # ---- Designタブ ----
     elif page == "design":
         st.markdown("<h2>Design</h2>", unsafe_allow_html=True)
