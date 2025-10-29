@@ -168,40 +168,39 @@ with col2:
         st.session_state.output_sheet_url = st.text_input("Sheet URL", value=st.session_state.output_sheet_url)
         st.session_state.output_sheet_name = st.text_input("Sheet Name", value=st.session_state.output_sheet_name)
 
-    # Run button
-    
-    if st.button("Run Output"):
-        # --- Nomicデータ取得 ---
-        df_master, err = nomic_module.create_nomic_dataset(
-            st.session_state.nomic_api_token,
-            st.session_state.nomic_domain,
-            st.session_state.nomic_map_url
-        )
-
-        with open("./design/defalte.json", "r", encoding="utf-8") as f:
-            style_config = json.load(f)
-
-        if err or df_master is None:
-            st.error(f"❌ Failed to fetch Nomic data: {err}")
-        else:
-            # --- Google Sheets 書き込み ---
-            service_account_info = json.loads(st.secrets["google_service_account"]["value"])
-            sheet_url, sheet_err = sheet_module.write_sheet(
-                st.session_state.output_sheet_url,
-                st.session_state.output_sheet_name,
-                service_account_info,
-                df_master,
-                style_config
+        # Run button
+        if st.button("Run Output"):
+            # --- Nomicデータ取得 ---
+            df_master, err = nomic_module.create_nomic_dataset(
+                st.session_state.nomic_api_token,
+                st.session_state.nomic_domain,
+                st.session_state.nomic_map_url
             )
 
-            if sheet_err:
-                st.error(f"❌ Failed to export to Google Sheets: {sheet_err}")
+            with open("./design/defalte.json", "r", encoding="utf-8") as f:
+                style_config = json.load(f)
+
+            if err or df_master is None:
+                st.error(f"❌ Failed to fetch Nomic data: {err}")
             else:
-                st.session_state.df_master = df_master
-                st.success(f"✅ Data exported to '{st.session_state.output_sheet_name or 'unspecified sheet'}'")
+                # --- Google Sheets 書き込み ---
+                service_account_info = json.loads(st.secrets["google_service_account"]["value"])
+                sheet_url, sheet_err = sheet_module.write_sheet(
+                    st.session_state.output_sheet_url,
+                    st.session_state.output_sheet_name,
+                    service_account_info,
+                    df_master,
+                    style_config
+                )
+
+                if sheet_err:
+                    st.error(f"❌ Failed to export to Google Sheets: {sheet_err}")
+                else:
+                    st.session_state.df_master = df_master
+                    st.success(f"✅ Data exported to '{st.session_state.output_sheet_name or 'unspecified sheet'}'")
 
 
-        # --- データプレビュー ---
+            # --- データプレビュー ---
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
 
