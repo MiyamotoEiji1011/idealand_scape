@@ -216,16 +216,17 @@ def style_column(
     vertical: str = "MIDDLE",             # "TOP"/"MIDDLE"/"BOTTOM"
     columnWidth: int | None = None,       # 例: 120（px）; Noneなら幅は触らない
     exclude_header: bool = True,
+    numberFormat: str | None = None       # 追加: "PERCENT" / "NUMBER" / "CURRENCY" など
 ):
     """
-    指定列にスタイル + 列幅（任意）を適用。未指定パラメータはデフォルトで上書き。
+    指定列にスタイル + 列幅（任意）を適用。数値フォーマットも指定可能。
     1行目（ヘッダー）は exclude_header=True のとき除外。
     """
     if df is None or df.empty:
         return
 
     col_idx = _col_to_index(col, df)
-    num_rows = len(df) + 1  # ヘッダー含む
+    num_rows = len(df) + 1
     start_row = 1 if exclude_header else 0
     end_row = num_rows
 
@@ -240,11 +241,14 @@ def style_column(
             raise ValueError("wrap must be bool or 'WRAP'/'CLIP'/'OVERFLOW'")
         wrap_mode = wm
 
-    # 色
+    # 色処理
     fg = _hex_to_color(foregroundColor) if isinstance(foregroundColor, str) else foregroundColor
     bg = None
-    if backgroundColor is not None:
-        bg = _hex_to_color(backgroundColor) if isinstance(backgroundColor, str) else backgroundColor
+    if backgroundColor:
+        if backgroundColor.strip() == "":
+            backgroundColor = None
+        else:
+            bg = _hex_to_color(backgroundColor)
 
     fmt = {
         "textFormat": {
@@ -261,11 +265,24 @@ def style_column(
     if bg is not None:
         fmt["backgroundColor"] = bg
 
+    # --- 🧮 数値フォーマット設定 ---
+    if numberFormat:
+        format_type = numberFormat.upper()
+        # PERCENT, NUMBER, CURRENCY, DATE, TIME, TEXT などが指定可
+        if format_type == "PERCENT":
+            fmt["numberFormat"] = {"type": "PERCENT", "pattern": "0.00%"}
+        elif format_type == "NUMBER":
+            fmt["numberFormat"] = {"type": "NUMBER", "pattern": "0.00"}
+        elif format_type == "CURRENCY":
+            fmt["numberFormat"] = {"type": "CURRENCY", "pattern": "¥#,##0.00"}
+        else:
+            fmt["numberFormat"] = {"type": format_type}
+
     service = build("sheets", "v4", credentials=worksheet.spreadsheet.client.auth)
 
     requests = []
 
-    # 1) 見た目（フォーマット）
+    # 1️⃣ スタイル適用
     requests.append({
         "repeatCell": {
             "range": {
@@ -280,7 +297,7 @@ def style_column(
         }
     })
 
-    # 2) 列幅（任意）
+    # 2️⃣ 列幅設定
     if columnWidth is not None and int(columnWidth) > 0:
         requests.append({
             "updateDimensionProperties": {

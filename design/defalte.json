@@ -149,7 +149,8 @@
             "horizontal": "LEFT",
             "vertical": "MIDDLE",
             "columnWidth": 220,
-            "exclude_header": true
+            "exclude_header": true,
+            "numberFormat":"PERCENT"
         },
         "N": {
             "fontFamily": "Roboto",
@@ -185,7 +186,8 @@
             "horizontal": "LEFT",
             "vertical": "MIDDLE",
             "columnWidth": 220,
-            "exclude_header": true
+            "exclude_header": true,
+            "numberFormat": "PERCENT"
         },
         "P": {
             "fontFamily": "Roboto",
@@ -221,7 +223,8 @@
             "horizontal": "LEFT",
             "vertical": "MIDDLE",
             "columnWidth": 220,
-            "exclude_header": true
+            "exclude_header": true,
+            "numberFormat": "PERCENT"
         },
         "S": {
             "fontFamily": "Roboto",
@@ -257,7 +260,8 @@
             "horizontal": "LEFT",
             "vertical": "MIDDLE",
             "columnWidth": 220,
-            "exclude_header": true
+            "exclude_header": true,
+            "numberFormat": "PERCENT"
         },
         "V": {
             "fontFamily": "Roboto",
