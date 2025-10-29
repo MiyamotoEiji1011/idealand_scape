@@ -18,7 +18,7 @@ st.markdown(
     <div class="header">
         <div class="header-left">
             <img src="{logo_url}" class="logo" alt="App Logo">
-            <span class="app-title">DataSync Hub</span>
+            <span class="app-title">Nomic Map to sheet</span>
         </div>
     </div>
     """,
@@ -100,7 +100,7 @@ st.markdown("""
 }
             /* ロゴ画像をきれいにスケーリング */
 .logo {
-    height: 48px;                /* 高さを固定（ここを変えれば調整可能） */
+    height: 100px;                /* 高さを固定（ここを変えれば調整可能） */
     width: auto;                 /* 横幅は自動で比率維持 */
     object-fit: contain;         /* トリミングせず全体を収める */
     display: block;
