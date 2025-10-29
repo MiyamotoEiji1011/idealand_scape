@@ -6,7 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 import pandas as pd
 from gspread_dataframe import set_with_dataframe
-from data_processing import prepare_master_dataframe
+from nomic_module import prepare_master_dataframe
 from sheet_formatter import (
     reset_sheet_formatting,
     apply_header_style_green,
