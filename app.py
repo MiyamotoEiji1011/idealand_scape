@@ -19,6 +19,7 @@ st.markdown(f"""
         <div class="header-left">
             <img src="{logo_url}" class="logo" alt="App Logo">
             <span class="title">Nomic Map to Sheet</span>
+            <span class="title">Nomic Map to Sheet</span>
         </div>
     </div>
 """, unsafe_allow_html=True)
