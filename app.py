@@ -95,44 +95,78 @@ with col2:
     # ---- Outputタブ ----
     elif page == "output":
         st.markdown("<h2>Output</h2>", unsafe_allow_html=True)
+        service_email = "bot-395@sigma-cairn-474804-b7.iam.gserviceaccount.com"
+
+        st.markdown(
+            f"""
+            <div style="padding:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; margin-bottom:16px;">
+                <p style="margin-bottom:8px;">
+                    出力を行う前に、以下のメールアドレスをスプレッドシートの共有設定に追加し、<b>編集者権限</b>を付与してください。
+                </p>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="text" value="{service_email}" id="svcMail" readonly
+                        style="flex:1; padding:6px 10px; font-family:monospace; border:1px solid #ccc; border-radius:6px; background:white;">
+                    <button onclick="navigator.clipboard.writeText('{service_email}')"
+                        style="padding:6px 10px; border:none; border-radius:6px; background:#4CAF50; color:white; cursor:pointer;">
+                        コピー
+                    </button>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         st.session_state.output_sheet_url = st.text_input("Sheet URL", value=st.session_state.output_sheet_url)
         st.session_state.output_sheet_name = st.text_input("Sheet Name", value=st.session_state.output_sheet_name)
 
-        # Run button
-        if st.button("Run Output"):
-            # --- Nomicデータ取得 ---
-            df_master, err = nomic_module.create_nomic_dataset(
-                st.session_state.nomic_api_token,
-                st.session_state.nomic_domain,
-                st.session_state.nomic_map_url
-            )
+        # --- 初期化 ---
+        if "is_running" not in st.session_state:
+            st.session_state.is_running = False
 
-            with open("./design/defalte.json", "r", encoding="utf-8") as f:
-                style_config = json.load(f)
+        # --- 実行ボタン ---
+        button_disabled = st.session_state.is_running
+        run_clicked = st.button("Run Output", disabled=button_disabled)
 
-            if err or df_master is None:
-                st.error(f"❌ Failed to fetch Nomic data: {err}")
-            else:
-                # --- Google Sheets 書き込み ---
-                service_account_info = json.loads(st.secrets["google_service_account"]["value"])
-                sheet_url, sheet_err = sheet_module.write_sheet(
-                    st.session_state.output_sheet_url,
-                    st.session_state.output_sheet_name,
-                    service_account_info,
-                    df_master,
-                    style_config
+        if run_clicked and not st.session_state.is_running:
+            st.session_state.is_running = True  # 処理中フラグON
+            st.info("⏳ Processing... please wait")
+
+            try:
+                # --- Nomicデータ取得 ---
+                df_master, err = nomic_module.create_nomic_dataset(
+                    st.session_state.nomic_api_token,
+                    st.session_state.nomic_domain,
+                    st.session_state.nomic_map_url
                 )
 
-                if sheet_err:
-                    st.error(f"❌ Failed to export to Google Sheets: {sheet_err}")
-                else:
-                    st.session_state.df_master = df_master
-                    st.success(f"✅ Data exported to '{st.session_state.output_sheet_name or 'unspecified sheet'}'")
+                with open("./design/defalte.json", "r", encoding="utf-8") as f:
+                    style_config = json.load(f)
 
-        # Data preview
+                if err or df_master is None:
+                    st.error(f"❌ Failed to fetch Nomic data: {err}")
+                else:
+                    # --- Google Sheets 書き込み ---
+                    service_account_info = json.loads(st.secrets["google_service_account"]["value"])
+                    sheet_url, sheet_err = sheet_module.write_sheet(
+                        st.session_state.output_sheet_url,
+                        st.session_state.output_sheet_name,
+                        service_account_info,
+                        df_master,
+                        style_config
+                    )
+
+                    if sheet_err:
+                        st.error(f"❌ Failed to export to Google Sheets: {sheet_err}")
+                    else:
+                        st.session_state.df_master = df_master
+                        st.success(f"✅ Data exported to '{st.session_state.output_sheet_name or 'unspecified sheet'}'")
+
+            finally:
+                st.session_state.is_running = False  # 処理完了後に解除
+
+        # --- データプレビュー ---
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
-    
+
 
 
 # ===================================
