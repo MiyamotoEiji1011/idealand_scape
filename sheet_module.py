@@ -47,9 +47,9 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
         apply_filter_to_header(worksheet, df_master)
         apply_wrap_text_to_header_row(worksheet, df_master)
 
-        #apply_green_outer_border(worksheet, df_master)
+        apply_green_outer_border(worksheet, df_master)
 
-        #dropdowns(worksheet, df_master)
+        dropdowns(worksheet, df_master)
 
 
         print(f"✅ Successfully wrote data to '{sheet_name}' in spreadsheet {spreadsheet_id}")
