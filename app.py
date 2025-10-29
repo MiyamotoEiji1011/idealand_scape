@@ -13,20 +13,6 @@ import json
 # ===================================
 # 関数
 # ===================================
-
-def extract_spreadsheet_id(url: str) -> str:
-    if not url:
-        raise ValueError("Spreadsheet URL is missing.")
-
-    url = url.strip()
-    match = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", url)
-    if not match:
-        raise ValueError("Invalid Google Sheets URL format. Please provide a valid spreadsheet URL.")
-
-    spreadsheet_id = match.group(1)
-    return spreadsheet_id
-
-
 def nomic_dataset(api_token: str, domain: str, map_url: str):
     # URLから map_name を抽出
     match = re.search(r"/data/[^/]+/([^/]+)/map", map_url or "")
@@ -135,7 +121,7 @@ def output_sheet():
     st.session_state.gclient = gclient
 
     # スプレッドシートのIDを抽出
-    url = url.strip()
+    url = st.session_state.output_sheet_url.strip()
     match = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", url)
 
     spreadsheet_id = match.group(1)
