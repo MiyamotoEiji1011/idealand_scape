@@ -51,6 +51,10 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
 
         dropdowns(worksheet, df_master)
 
+        style_column(worksheet, df_master, "B",
+             fontSize=12, bold=True,
+             backgroundColor="#FFF7ED",
+             columnWidth=160)
 
         print(f"✅ Successfully wrote data to '{sheet_name}' in spreadsheet {spreadsheet_id}")
         return worksheet.url, None
