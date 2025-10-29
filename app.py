@@ -134,7 +134,8 @@ with col2:
         # Data preview
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
-        
+    
+    """
     # ---- Designタブ ----
     elif page == "design":
         st.markdown("<h2>Design</h2>", unsafe_allow_html=True)
@@ -147,6 +148,7 @@ with col2:
         st.session_state.setting_category_col = st.text_input("Category Column", value=st.session_state.setting_category_col)
 
     st.markdown("</div>", unsafe_allow_html=True)
+    """
 
 
 # ===================================
