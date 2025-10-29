@@ -107,12 +107,12 @@ body, .stApp {
     gap: 12px;
 }
 .logo {
-    height: 40px;
+    height: 80px;
     width: auto;
     object-fit: contain;
 }
 .title {
-    font-size: 20px;
+    font-size: 40px;
     font-weight: 600;
     color: #fff;
 }
