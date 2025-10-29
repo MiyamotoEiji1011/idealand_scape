@@ -1,187 +1,115 @@
-/* ===============================
-   🌍 全体設定
-   =============================== */
-
-/* 全体背景を白に */
+/* ===== 全体 ===== */
+body,
 .stApp {
-    background-color: #ffffff !important;
+    background-color: #111 !important;
+    color: #fff !important;
+    font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* ===============================
-   🧭 ヘッダー
-   =============================== */
-
+/* ===== ヘッダー ===== */
 .header {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    background-color: #ffffff;
-    border-bottom: 2px solid #f0f0f0;
-    padding: 12px 40px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid #333;
+    padding: 16px 40px;
 }
 
-/* ロゴ画像をきれいにスケーリング */
-.logo {
-    height: 100px;
-    /* 高さを固定（比率は維持） */
-    width: auto;
-    object-fit: contain;
-    display: block;
-    margin-right: 12px;
-}
-
-/* ロゴとタイトルの位置を微調整 */
 .header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
-    flex-shrink: 0;
+    gap: 12px;
 }
 
-/* タイトルの見た目 */
-.app-title {
-    font-size: 22px;
+.logo {
+    height: 80px;
+    width: auto;
+    object-fit: contain;
+}
+
+.title {
+    font-size: 40px;
     font-weight: 600;
-    color: #222;
-    letter-spacing: 0.5px;
+    color: #fff;
 }
 
-/* ===============================
-   🔶 タブ群
-   =============================== */
+/* ===== 左側タブメニュー ===== */
+.side-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 20px 10px;
+    height: 100%;
+}
 
-div[data-testid="column"] button {
-    background-color: #fff;
+div[data-testid="stButton"] button {
+    background-color: #222;
+    color: #fff;
     border: none;
-    border-bottom: 3px solid transparent;
-    color: #333;
-    font-size: 15px;
+    border-radius: 6px;
+    padding: 10px;
     font-weight: 500;
-    padding: 10px 0;
     transition: all 0.2s ease;
 }
 
-div[data-testid="column"] button:hover {
-    color: #ff6a00;
-    border-bottom: 3px solid #ff6a00;
-    background-color: #fafafa;
+div[data-testid="stButton"] button:hover {
+    background-color: #333;
 }
 
-div[data-testid="column"] button:focus {
+div[data-testid="stButton"] button:focus {
     outline: none;
 }
 
-div[data-testid="column"] button:has(strong) {
-    color: #ff6a00 !important;
-    border-bottom: 3px solid #ff6a00 !important;
-    font-weight: 600;
+div[data-testid="stButton"] button:has(strong) {
+    background-color: #fff;
+    color: #000;
 }
 
-/* タブ下のライン */
-.tab-underline {
-    height: 1px;
-    background-color: #ddd;
-    margin-bottom: 1.5rem;
+/* アクティブなタブ */
+.active-tab {
+    background-color: #fff !important;
+    color: #000 !important;
 }
 
-/* ===============================
-   🧱 コンテンツ・フォーム
-   =============================== */
-
-/* 見出し */
-h1,
-h2,
-h3 {
-    color: #222;
-    font-family: 'Helvetica Neue', 'Noto Sans JP', sans-serif;
+/* ===== メインエリア ===== */
+.content {
+    padding: 40px;
+    background-color: #111;
 }
 
-/* 入力フォーム */
+h2 {
+    border-left: 4px solid #fff;
+    padding-left: 12px;
+    margin-bottom: 20px;
+    color: #fff;
+    background-color: #222;
+}
+
+/* ===== 入力エリア ===== */
 input,
-textarea,
-select {
-    background-color: #ffffff !important;
-    border: 1px solid #ccc !important;
-    color: #111 !important;
-    border-radius: 4px !important;
+textarea {
+    background-color: #000 !important;
+    color: #fff !important;
+    border: 2px solid #444 !important;
+    border-radius: 4px;
     transition: 0.2s ease-in-out;
 }
 
 input:focus,
-textarea:focus,
-select:focus {
-    border-color: #ff6a00 !important;
-    box-shadow: 0 0 4px rgba(255, 106, 0, 0.3);
+textarea:focus {
+    border-color: #fff !important;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
 }
 
-/* ボタン */
+/* ===== ボタン ===== */
 button[kind="primary"] {
-    background-color: #ff6a00 !important;
-    color: white !important;
+    background-color: #fff !important;
+    color: #000 !important;
     border: none !important;
     border-radius: 4px !important;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(255, 106, 0, 0.3);
 }
 
 button[kind="primary"]:hover {
-    background-color: #e85c00 !important;
-}
-
-/* 情報ボックス */
-[data-testid="stAlert"] {
-    background-color: #fafafa !important;
-    border-left: 4px solid #ff6a00 !important;
-    color: #333 !important;
-}
-
-/* 区切り */
-hr {
-    border: none;
-    border-bottom: 1px solid #eee;
-}
-
-/* ===============================
-   🧭 コンテンツエリア調整（中央寄せ）
-   =============================== */
-
-/* メインのコンテンツ領域を中央に寄せる */
-.content-area {
-    max-width: 900px;
-    /* 横幅の最大値（好みで調整：800〜1000px推奨） */
-    margin: 0 auto;
-    /* 中央寄せ */
-    padding: 40px 20px 60px;
-    /* 上下に余白 */
-}
-
-/* 入力フォーム全体をカード風に */
-.card {
-    background-color: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 10px;
-    padding: 30px 40px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
-    margin-bottom: 40px;
-}
-
-/* フォームのタイトルに余白を追加 */
-.card h2,
-.card h3 {
-    margin-top: 0;
-    margin-bottom: 1.2rem;
-    border-left: 4px solid #ff6a00;
-    padding-left: 12px;
-}
-
-/* テキスト入力の幅を調整（中央寄せを維持） */
-.card input {
-    width: 100%;
-    max-width: 100%;
-}
-
-/* カード間の呼吸感を調整 */
-.card+.card {
-    margin-top: 50px;
+    background-color: #ddd !important;
 }

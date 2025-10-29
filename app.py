@@ -34,15 +34,12 @@ tabs = {
     "export": "🚀 出力・実行",
 }
 
-# 2カラムレイアウト
-# 3カラム構成（左・スペース・右）
+# 3カラム構成（左右スペース・中央）
 spacer1, col1, spacer2, col2, spacer3 = st.columns([0.5, 1, 0.1, 3, 0.5])
 
 with col1:
-    # 左のタブメニュー
     st.markdown("<div class='side-menu'>", unsafe_allow_html=True)
     for key, label in tabs.items():
-        active = st.session_state.page == key
         if st.button(label, key=f"tab_{key}", use_container_width=True):
             st.session_state.page = key
     st.markdown("</div>", unsafe_allow_html=True)
@@ -82,111 +79,10 @@ with col2:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================
-# 💅 CSS — 黒×白ベース、横タブ構成
+# 💅 外部CSSを読み込む
 # ================================
-st.markdown("""
-<style>
-/* ===== 全体 ===== */
-body, .stApp {
-    background-color: #111 !important;
-    color: #fff !important;
-    font-family: 'Noto Sans JP', sans-serif;
-}
+def local_css(file_name):
+    with open(file_name, encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-/* ===== ヘッダー ===== */
-.header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    border-bottom: 1px solid #333;
-    padding: 16px 40px;
-}
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.logo {
-    height: 80px;
-    width: auto;
-    object-fit: contain;
-}
-.title {
-    font-size: 40px;
-    font-weight: 600;
-    color: #fff;
-}
-
-/* ===== 左側タブメニュー ===== */
-.side-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-    padding: 20px 10px;
-    height: 100%;
-}
-div[data-testid="stButton"] button {
-    background-color: #222;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    padding: 10px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-div[data-testid="stButton"] button:hover {
-    background-color: #333;
-}
-div[data-testid="stButton"] button:focus {
-    outline: none;
-}
-div[data-testid="stButton"] button:has(strong) {
-    background-color: #fff;
-    color: #000;
-}
-
-/* アクティブなタブ */
-.active-tab {
-    background-color: #fff !important;
-    color: #000 !important;
-}
-
-/* ===== メインエリア ===== */
-.content {
-    padding: 40px;
-    background-color: #111;
-}
-h2 {
-    border-left: 4px solid #fff;
-    padding-left: 12px;
-    margin-bottom: 20px;
-    color: #fff;
-    background-color: #222;
-}
-
-/* ===== 入力エリア ===== */
-input, textarea {
-    background-color: #000 !important;
-    color: #fff !important;
-    border: 1px solid #444 !important;
-    border-radius: 4px;
-    transition: 0.2s ease-in-out;
-}
-input:focus, textarea:focus {
-    border-color: #fff !important;
-    box-shadow: 0 0 4px rgba(255,255,255,0.4);
-}
-
-/* ===== ボタン ===== */
-button[kind="primary"] {
-    background-color: #fff !important;
-    color: #000 !important;
-    border: none !important;
-    border-radius: 4px !important;
-    font-weight: 600;
-}
-button[kind="primary"]:hover {
-    background-color: #ddd !important;
-}
-</style>
-""", unsafe_allow_html=True)
+local_css("style.css")
