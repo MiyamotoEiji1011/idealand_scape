@@ -81,12 +81,6 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master, st
 
 
 def reset_sheet(worksheet):
-    """
-    シート全体をリセットし、標準フォントとテキストカラーを設定。
-    - 既存の書式・プルダウン・条件付き書式・罫線などを全削除
-    - ベースフォント: Roboto
-    - テキストカラー: #434343 (67/255, 67/255, 67/255)
-    """
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
     spreadsheet_id = spreadsheet.id
