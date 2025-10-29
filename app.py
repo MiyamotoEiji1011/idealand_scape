@@ -19,6 +19,7 @@ st.markdown(f"""
         <div class="header-left">
             <img src="{logo_url}" class="logo" alt="App Logo">
             <span class="title">Nomic Map to Sheet</span>
+            <br>
             <p>ideaflow landscape </p>
         </div>
     </div>
