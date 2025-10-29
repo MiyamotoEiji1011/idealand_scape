@@ -36,7 +36,7 @@ tabs = {
 
 # 2カラムレイアウト
 # 3カラム構成（左・スペース・右）
-col1, spacer, col2 = st.columns([1, 0.1, 3])
+spacer1, col1, spacer2, col2, spacer3 = st.columns([0.1, 1, 0.1, 3, 0.1])
 
 with col1:
     # 左のタブメニュー
