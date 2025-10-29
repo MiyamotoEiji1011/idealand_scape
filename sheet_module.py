@@ -43,7 +43,7 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
         reset_sheet(worksheet)
         base_sheet_design(worksheet, df_master)
 
-        apply_header_style(worksheet, df_master) #データ変更可
+        apply_header_style(worksheet, df_master) #データ変更可 
         apply_filter_to_header(worksheet, df_master)
         apply_wrap_text_to_header_row(worksheet, df_master)
 
