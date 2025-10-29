@@ -1,115 +1,143 @@
-/* 全体の背景・フォント */
+/* ===============================
+   🌍 全体設定
+   =============================== */
+
+/* 全体背景を白に */
 .stApp {
-    background: linear-gradient(180deg, #141414 0%, #1a1a1a 100%);
-    color: #f5f5f5;
-    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+    background-color: #ffffff !important;
 }
 
-/* サイドバー */
-section[data-testid="stSidebar"] {
-    background-color: #202124;
-    border-right: 1px solid #333;
-    padding-top: 1rem;
+/* ===============================
+   🧭 ヘッダー
+   =============================== */
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #ffffff;
+    border-bottom: 2px solid #f0f0f0;
+    padding: 12px 40px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-.sidebar-title {
-    color: #fff;
-    font-size: 1.2rem;
+/* ロゴ画像をきれいにスケーリング */
+.logo {
+    height: 100px;
+    /* 高さを固定（比率は維持） */
+    width: auto;
+    object-fit: contain;
+    display: block;
+    margin-right: 12px;
+}
+
+/* ロゴとタイトルの位置を微調整 */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+/* タイトルの見た目 */
+.app-title {
+    font-size: 22px;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    color: #222;
+    letter-spacing: 0.5px;
 }
 
+/* ===============================
+   🔶 タブ群
+   =============================== */
 
-/* サイドバーの通常ボタン */
-.stButton>button {
-    background-color: #2c2c2c;
-    color: #ddd;
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 8px 16px;
-    text-align: left;
-    transition: 0.2s all ease-in-out;
-    font-weight: 500;
+div[data-testid="column"] button {
+    background-color: #fff;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #333;
     font-size: 15px;
+    font-weight: 500;
+    padding: 10px 0;
+    transition: all 0.2s ease;
 }
 
-/* ホバー時 */
-.stButton>button:hover {
-    background-color: #3a3a3a;
-    border-color: #ff4b4b;
-    color: #fff;
+div[data-testid="column"] button:hover {
+    color: #ff6a00;
+    border-bottom: 3px solid #ff6a00;
+    background-color: #fafafa;
 }
 
-/* アクティブ（選択中）ボタン */
-.active-button>button,
-div[data-testid="stButton"] button[style*="background-color:#ff4b4b"] {
-    background-color: #ff4b4b !important;
-    color: #fff !important;
+div[data-testid="column"] button:focus {
+    outline: none;
+}
+
+div[data-testid="column"] button:has(strong) {
+    color: #ff6a00 !important;
+    border-bottom: 3px solid #ff6a00 !important;
     font-weight: 600;
-    border: 1px solid #ff4b4b !important;
-    box-shadow: 0 0 8px rgba(255, 75, 75, 0.3);
 }
 
-/* クリックフォーカスで文字が消えないように */
-.stButton>button:focus {
-    outline: none !important;
-    box-shadow: 0 0 6px rgba(255, 75, 75, 0.4);
-    color: #fff !important;
-}
-
-/* メインタイトル */
-.main-title {
-    font-size: 1.8rem;
-    color: #ffffff;
-    font-weight: 600;
-    margin-top: 1rem;
-}
-
-/* サブテキスト */
-.subtext {
-    color: #bbbbbb;
-    font-size: 0.95rem;
-    margin-bottom: 1rem;
-}
-
-/* 区切り線 */
-.divider {
-    border: 0;
+/* タブ下のライン */
+.tab-underline {
     height: 1px;
-    background-color: #333;
+    background-color: #ddd;
     margin-bottom: 1.5rem;
 }
 
-/* ヘッダー */
+/* ===============================
+   🧱 コンテンツ・フォーム
+   =============================== */
+
+/* 見出し */
+h1,
 h2,
 h3 {
-    color: #e8e8e8 !important;
+    color: #222;
+    font-family: 'Helvetica Neue', 'Noto Sans JP', sans-serif;
 }
 
-/* テキスト入力 */
+/* 入力フォーム */
 input,
 textarea,
 select {
-    background-color: #2a2a2a !important;
-    color: #fff !important;
-    border: 1px solid #444 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #ccc !important;
+    color: #111 !important;
     border-radius: 4px !important;
+    transition: 0.2s ease-in-out;
 }
 
-input:focus {
-    border-color: #ff4b4b !important;
-    outline: none !important;
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: #ff6a00 !important;
+    box-shadow: 0 0 4px rgba(255, 106, 0, 0.3);
 }
 
-/* ファイルアップローダー */
-[data-testid="stFileUploader"] {
-    background-color: #2a2a2a !important;
-    border: 1px dashed #555 !important;
+/* ボタン */
+button[kind="primary"] {
+    background-color: #ff6a00 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(255, 106, 0, 0.3);
+}
+
+button[kind="primary"]:hover {
+    background-color: #e85c00 !important;
 }
 
 /* 情報ボックス */
-div[data-testid="stAlert"] {
-    background-color: #2a2a2a !important;
-    border-left: 4px solid #ff4b4b !important;
-    color: #fff !important;
+[data-testid="stAlert"] {
+    background-color: #fafafa !important;
+    border-left: 4px solid #ff6a00 !important;
+    color: #333 !important;
+}
+
+/* 区切り */
+hr {
+    border: none;
+    border-bottom: 1px solid #eee;
 }
