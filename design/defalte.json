@@ -3,8 +3,8 @@
         "backgroundColor": "#356854",
         "textColor": "#FFFFFF",
         "bold": true,
-        "fontSize": 11,
-        "header_height_px": 60
+        "fontSize": 10,
+        "header_height_px": 45
     },
     "columns": {
         "A": {

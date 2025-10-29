@@ -65,9 +65,7 @@ st.markdown(f"""
 # ===================================
 tabs = {
     "nomic": "Nomic",
-    "output": "Output",
-    "design": "Design",
-    "setting": "Setting",
+    "output": "Output"
 }
 
 spacer1, col1, spacer2, col2, spacer3 = st.columns([0.5, 1, 0.1, 3, 0.5])
@@ -135,20 +133,6 @@ with col2:
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
     
-    """
-    # ---- Designタブ ----
-    elif page == "design":
-        st.markdown("<h2>Design</h2>", unsafe_allow_html=True)
-        st.session_state.design_sheet_id = st.text_input("Sheet ID", value=st.session_state.design_sheet_id)
-        st.session_state.design_sheet_name = st.text_input("Sheet Name", value=st.session_state.design_sheet_name)
-
-    # ---- Settingタブ ----
-    elif page == "setting":
-        st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
-        st.session_state.setting_category_col = st.text_input("Category Column", value=st.session_state.setting_category_col)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-    """
 
 
 # ===================================

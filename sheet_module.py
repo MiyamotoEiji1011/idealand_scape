@@ -215,8 +215,7 @@ def style_column(
     horizontal: str = "LEFT",             # "LEFT"/"CENTER"/"RIGHT"
     vertical: str = "MIDDLE",             # "TOP"/"MIDDLE"/"BOTTOM"
     columnWidth: int | None = None,       # 例: 120（px）; Noneなら幅は触らない
-    exclude_header: bool = True,
-    numberFormat: str | None = None       # 追加: "PERCENT" / "NUMBER" / "CURRENCY" など
+    exclude_header: bool = True
 ):
     """
     指定列にスタイル + 列幅（任意）を適用。数値フォーマットも指定可能。
@@ -265,18 +264,6 @@ def style_column(
     if bg is not None:
         fmt["backgroundColor"] = bg
 
-    # --- 🧮 数値フォーマット設定 ---
-    if numberFormat:
-        format_type = numberFormat.upper()
-        # PERCENT, NUMBER, CURRENCY, DATE, TIME, TEXT などが指定可
-        if format_type == "PERCENT":
-            fmt["numberFormat"] = {"type": "PERCENT", "pattern": "0.00%"}
-        elif format_type == "NUMBER":
-            fmt["numberFormat"] = {"type": "NUMBER", "pattern": "0.00"}
-        elif format_type == "CURRENCY":
-            fmt["numberFormat"] = {"type": "CURRENCY", "pattern": "¥#,##0.00"}
-        else:
-            fmt["numberFormat"] = {"type": format_type}
 
     service = build("sheets", "v4", credentials=worksheet.spreadsheet.client.auth)
 
