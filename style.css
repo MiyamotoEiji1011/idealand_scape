@@ -90,14 +90,12 @@ input,
 textarea {
     background-color: #000 !important;
     color: #fff !important;
-    border: 2px solid #444 !important;
     border-radius: 4px;
     transition: 0.2s ease-in-out;
 }
 
 input:focus,
 textarea:focus {
-    border-color: #fff !important;
     box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
 }
 
