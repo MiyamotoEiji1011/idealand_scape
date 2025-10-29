@@ -42,6 +42,11 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
         set_with_dataframe(worksheet, df_master, include_column_header=True, resize=True)
         reset_sheet(worksheet)
 
+        style_column(worksheet, df_master, "A",
+             fontSize=20, bold=True,
+             backgroundColor="#FF8C00",
+             columnWidth=160)
+
         print(f"✅ Successfully wrote data to '{sheet_name}' in spreadsheet {spreadsheet_id}")
         return worksheet.url, None
 
@@ -147,3 +152,131 @@ def reset_sheet(worksheet):
     ).execute()
 
     print("✅ Sheet formatting reset + base style applied (Roboto + #434343)")
+
+
+def _hex_to_color(x: str):
+    x = x.strip()
+    if not x.startswith("#"):
+        raise ValueError("Color must be hex like #RRGGBB")
+    x = x[1:]
+    if len(x) == 3:
+        x = "".join([c*2 for c in x])
+    r = int(x[0:2], 16) / 255.0
+    g = int(x[2:4], 16) / 255.0
+    b = int(x[4:6], 16) / 255.0
+    return {"red": r, "green": g, "blue": b}
+
+_COL_LET_RE = re.compile(r"^[A-Za-z]+$")
+
+def _col_to_index(col_key, df):
+    if isinstance(col_key, int):
+        return col_key - 1
+    if isinstance(col_key, str) and _COL_LET_RE.match(col_key):
+        s = col_key.upper()
+        idx = 0
+        for c in s:
+            idx = idx * 26 + (ord(c) - 64)
+        return idx - 1
+    if isinstance(col_key, str) and col_key in list(df.columns):
+        return list(df.columns).index(col_key)
+    raise ValueError(f"Unknown column spec: {col_key}")
+
+def style_column(
+    worksheet,
+    df,
+    col,
+    *,
+    fontFamily: str = "Roboto",
+    fontSize: int = 10,
+    bold: bool = False,
+    italic: bool = False,
+    foregroundColor: str = "#434343",
+    backgroundColor: str | None = None,   # Noneなら背景は触らない
+    wrap: bool | str = False,             # True/False or "WRAP"/"CLIP"/"OVERFLOW"
+    horizontal: str = "LEFT",             # "LEFT"/"CENTER"/"RIGHT"
+    vertical: str = "MIDDLE",             # "TOP"/"MIDDLE"/"BOTTOM"
+    columnWidth: int | None = None,       # 例: 120（px）; Noneなら幅は触らない
+    exclude_header: bool = True,
+):
+    """
+    指定列にスタイル + 列幅（任意）を適用。未指定パラメータはデフォルトで上書き。
+    1行目（ヘッダー）は exclude_header=True のとき除外。
+    """
+    if df is None or df.empty:
+        return
+
+    col_idx = _col_to_index(col, df)
+    num_rows = len(df) + 1  # ヘッダー含む
+    start_row = 1 if exclude_header else 0
+    end_row = num_rows
+
+    # wrap正規化
+    if isinstance(wrap, bool):
+        wrap_mode = "WRAP" if wrap else "OVERFLOW_CELL"
+    else:
+        wm = wrap.upper()
+        if wm == "OVERFLOW":
+            wm = "OVERFLOW_CELL"
+        if wm not in {"WRAP", "CLIP", "OVERFLOW_CELL"}:
+            raise ValueError("wrap must be bool or 'WRAP'/'CLIP'/'OVERFLOW'")
+        wrap_mode = wm
+
+    # 色
+    fg = _hex_to_color(foregroundColor) if isinstance(foregroundColor, str) else foregroundColor
+    bg = None
+    if backgroundColor is not None:
+        bg = _hex_to_color(backgroundColor) if isinstance(backgroundColor, str) else backgroundColor
+
+    fmt = {
+        "textFormat": {
+            "fontFamily": fontFamily,
+            "fontSize": int(fontSize),
+            "bold": bool(bold),
+            "italic": bool(italic),
+            "foregroundColor": fg,
+        },
+        "horizontalAlignment": horizontal.upper(),
+        "verticalAlignment": vertical.upper(),
+        "wrapStrategy": wrap_mode,
+    }
+    if bg is not None:
+        fmt["backgroundColor"] = bg
+
+    service = build("sheets", "v4", credentials=worksheet.spreadsheet.client.auth)
+
+    requests = []
+
+    # 1) 見た目（フォーマット）
+    requests.append({
+        "repeatCell": {
+            "range": {
+                "sheetId": worksheet.id,
+                "startRowIndex": start_row,
+                "endRowIndex": end_row,
+                "startColumnIndex": col_idx,
+                "endColumnIndex": col_idx + 1,
+            },
+            "cell": {"userEnteredFormat": fmt},
+            "fields": "userEnteredFormat",
+        }
+    })
+
+    # 2) 列幅（任意）
+    if columnWidth is not None and int(columnWidth) > 0:
+        requests.append({
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "dimension": "COLUMNS",
+                    "startIndex": col_idx,
+                    "endIndex": col_idx + 1,
+                },
+                "properties": {"pixelSize": int(columnWidth)},
+                "fields": "pixelSize",
+            }
+        })
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=worksheet.spreadsheet.id,
+        body={"requests": requests}
+    ).execute()

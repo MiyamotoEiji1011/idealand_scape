@@ -126,8 +126,6 @@ with col2:
                 else:
                     st.session_state.df_master = df_master
                     st.success(f"✅ Data exported to '{st.session_state.output_sheet_name or 'unspecified sheet'}'")
-                    if sheet_url:
-                        st.markdown(f"[Open Sheet]({sheet_url})")
 
         # Data preview
         if "df_master" in st.session_state and st.session_state.df_master is not None:
