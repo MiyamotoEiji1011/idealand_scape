@@ -224,7 +224,7 @@
             "vertical": "MIDDLE",
             "columnWidth": 220,
             "exclude_header": true,
-            "numberFormat": "PERCENT"
+            "numberFormat":"PERCENT"
         },
         "S": {
             "fontFamily": "Roboto",
@@ -260,8 +260,7 @@
             "horizontal": "LEFT",
             "vertical": "MIDDLE",
             "columnWidth": 220,
-            "exclude_header": true,
-            "numberFormat": "PERCENT"
+            "exclude_header": true
         },
         "V": {
             "fontFamily": "Roboto",
