@@ -4,7 +4,7 @@ from nomic import AtlasDataset
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-import sheet_formatter
+import sheet_module
 import nomic_module
 
 import re
@@ -102,6 +102,7 @@ with col2:
 
         # Run button
         if st.button("Run Output"):
+            # --- Nomicデータ取得 ---
             df_master, err = nomic_module.create_nomic_dataset(
                 st.session_state.nomic_api_token,
                 st.session_state.nomic_domain,
@@ -111,13 +112,26 @@ with col2:
             if err or df_master is None:
                 st.error(f"❌ Failed to fetch Nomic data: {err}")
             else:
-                st.session_state.df_master = df_master
-                st.success(f"✅ Data exported to {st.session_state.output_sheet_name or 'unspecified sheet'}")
+                # --- Google Sheets 書き込み ---
+                service_account_info = json.loads(st.secrets["google_service_account"]["value"])
+                sheet_url, sheet_err = sheet_module.write_sheet(
+                    st.session_state.output_sheet_url,
+                    st.session_state.output_sheet_name,
+                    service_account_info,
+                    df_master
+                )
+
+                if sheet_err:
+                    st.error(f"❌ Failed to export to Google Sheets: {sheet_err}")
+                else:
+                    st.session_state.df_master = df_master
+                    st.success(f"✅ Data exported to '{st.session_state.output_sheet_name or 'unspecified sheet'}'")
+                    if sheet_url:
+                        st.markdown(f"[Open Sheet]({sheet_url})")
 
         # Data preview
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
-
         
     # ---- Designタブ ----
     elif page == "design":

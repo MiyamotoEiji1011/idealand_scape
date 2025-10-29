@@ -7,7 +7,7 @@ import json
 import pandas as pd
 from gspread_dataframe import set_with_dataframe
 from nomic_module import prepare_master_dataframe
-from sheet_formatter import (
+from sheet_module import (
     reset_sheet_formatting,
     apply_header_style_green,
     apply_filter_to_header,
