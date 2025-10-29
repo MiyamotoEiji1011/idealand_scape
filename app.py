@@ -99,17 +99,13 @@ with col2:
 
         st.markdown(
             f"""
-            <div style="padding:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; margin-bottom:16px;">
+            <div style="padding:12px; border:1px solid #ddd; border-radius:8px; background:#333; margin-bottom:16px;">
                 <p style="margin-bottom:8px;">
                     出力を行う前に、以下のメールアドレスをスプレッドシートの共有設定に追加し、<b>編集者権限</b>を付与してください。
                 </p>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <input type="text" value="{service_email}" id="svcMail" readonly
-                        style="flex:1; padding:6px 10px; font-family:monospace; border:1px solid #ccc; border-radius:6px; background:white;">
-                    <button onclick="navigator.clipboard.writeText('{service_email}')"
-                        style="padding:6px 10px; border:none; border-radius:6px; background:#4CAF50; color:white; cursor:pointer;">
-                        コピー
-                    </button>
+                        style="flex:1; padding:6px 10px; border:1px solid #ccc; border-radius:6px; background:white;">
                 </div>
             </div>
             """,
