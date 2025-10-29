@@ -35,16 +35,16 @@ tabs = {
 }
 
 # 2カラムレイアウト
-col1, col2 = st.columns([1, 3])
+# 3カラム構成（左・スペース・右）
+col1, spacer, col2 = st.columns([1, 0.1, 3])
 
 with col1:
+    # 左のタブメニュー
     st.markdown("<div class='side-menu'>", unsafe_allow_html=True)
     for key, label in tabs.items():
         active = st.session_state.page == key
-        style = "active-tab" if active else "tab-btn"
         if st.button(label, key=f"tab_{key}", use_container_width=True):
             st.session_state.page = key
-        st.markdown(f"<style>div[data-testid='stButton'][key='tab_{key}'] button{{}} </style>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================
