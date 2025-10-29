@@ -109,6 +109,9 @@ with col2:
                 st.session_state.nomic_map_url
             )
 
+            with open("./design/defalte.json", "r", encoding="utf-8") as f:
+                style_config = json.load(f)
+
             if err or df_master is None:
                 st.error(f"❌ Failed to fetch Nomic data: {err}")
             else:
@@ -118,7 +121,8 @@ with col2:
                     st.session_state.output_sheet_url,
                     st.session_state.output_sheet_name,
                     service_account_info,
-                    df_master
+                    df_master,
+                    style_config
                 )
 
                 if sheet_err:

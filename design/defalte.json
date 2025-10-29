@@ -1,0 +1,36 @@
+{
+    "header": {
+        "backgroundColor": "#356854",
+        "textColor": "#FFFFFF",
+        "bold": true,
+        "fontSize": 11,
+        "header_height_px": 42
+    },
+    "columns": {
+        "A": {
+            "fontSize": 12,
+            "bold": true,
+            "columnWidth": 180
+        },
+        "B": {
+            "backgroundColor": "#FEF3C7",
+            "foregroundColor": "#78350F",
+            "wrap": true,
+            "columnWidth": 140
+        },
+        "C": {
+            "fontFamily": "Roboto Mono",
+            "horizontal": "RIGHT",
+            "columnWidth": 100
+        }
+    },
+    "planet": {
+        "has_planet": true,
+        "planet_color": "#356854",
+        "group_right_edges": [
+            5,
+            10,
+            15
+        ]
+    }
+}

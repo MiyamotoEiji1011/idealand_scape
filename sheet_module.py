@@ -20,7 +20,7 @@ def extract_spreadsheet_id(url) -> str:
     return m.group(1) if m else url
 
 
-def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
+def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master, style_config):
     try:
         scope = [
             "https://spreadsheets.google.com/feeds",
@@ -43,17 +43,34 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
         reset_sheet(worksheet)
         base_sheet_design(worksheet, df_master)
 
-        apply_header_style(worksheet, df_master) #データ変更可 
+        header_cfg = style_config.get("header", {})
+        apply_header_style(
+            worksheet,
+            df_master,
+            backgroundColor=header_cfg.get("backgroundColor", "#356854"),
+            textColor=header_cfg.get("textColor", "#FFFFFF"),
+            bold=header_cfg.get("bold", True),
+            fontSize=header_cfg.get("fontSize", 10),
+            header_height_px=header_cfg.get("header_height_px", 40),
+        )
         apply_filter_to_header(worksheet, df_master)
         apply_wrap_text_to_header_row(worksheet, df_master)
 
-        apply_planet_border(worksheet, df_master) #データ変更可
+        planet_cfg = style_config.get("planet", {})
+        apply_planet_border(
+            worksheet,
+            df_master,
+            has_planet=planet_cfg.get("has_planet", True),
+            planet_color=planet_cfg.get("planet_color", "#356854"),
+            start_row=planet_cfg.get("start_row", 1),
+            start_col=planet_cfg.get("start_col", 1),
+        )
 
         dropdowns(worksheet, df_master)
 
-        style_column(worksheet, df_master, "C",
-             fontSize=15, bold=False,
-             columnWidth=160)
+        column_cfg = style_config.get("columns", {})
+        for col_key, params in column_cfg.items():
+            style_column(worksheet, df_master, col_key, **params)
 
         print(f"✅ Successfully wrote data to '{sheet_name}' in spreadsheet {spreadsheet_id}")
         return worksheet.url, None
