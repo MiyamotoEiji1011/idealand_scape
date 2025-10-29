@@ -18,6 +18,17 @@ def extract_map_name(url_or_name: str) -> str:
     return url_or_name
 
 
+def get_data(token, domain, map_url):
+    try:
+        nomic.login(token=token, domain=domain)
+        map_id = extract_map_name(map_url)
+        dataset = AtlasDataset(map_id)
+
+        df_meta, df_topics, df_data = get_map_data(dataset.maps[0])
+        return df_meta, df_topics, df_data, None
+    except Exception as e:
+        return None,None,None, str(e)
+
 def create_nomic_dataset(token, domain, map_url):
     """Nomic Atlasからデータセットを取得し、マスターデータを生成"""
     try:
