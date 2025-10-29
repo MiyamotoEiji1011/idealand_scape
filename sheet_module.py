@@ -43,7 +43,7 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
         reset_sheet(worksheet)
         base_sheet_design(worksheet, df_master)
 
-        apply_header_style_green(worksheet, df_master)
+        apply_header_style(worksheet, df_master)
         apply_filter_to_header(worksheet, df_master)
         apply_wrap_text_to_header_row(worksheet, df_master)
 
@@ -631,8 +631,24 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
 # ===============================
 # 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
 # ===============================
-def apply_header_style_green(worksheet, df):
-    """1行目を緑背景＋白文字＋太字にし、1行目を固定＋高さ40pxに設定"""
+def apply_header_style(
+    worksheet,
+    df,
+    *,
+    backgroundColor: str = "#356854",     # デフォルト緑
+    textColor: str = "#FFFFFF",           # デフォルト白
+    bold: bool = True,                    # デフォルト太字ON
+    fontSize: int = 10,                   # 文字サイズ
+    header_height_px: int = 40            # 行の高さ
+):
+    """
+    1行目（ヘッダー）にスタイルを適用：
+      - 背景色、文字色、太字、文字サイズ、行高さを指定可能
+      - 1行目を固定
+
+    例:
+      apply_header_style_green(ws, df, backgroundColor="#004D40", textColor="#FFE082", bold=False, fontSize=12, header_height_px=50)
+    """
     if df.empty:
         return
 
@@ -640,6 +656,7 @@ def apply_header_style_green(worksheet, df):
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
 
     num_cols = len(df.columns)
+    # 最終列を "A1:Z1" のような文字列に変換
     if num_cols <= 26:
         last_col_letter = chr(64 + num_cols)
     else:
@@ -650,48 +667,58 @@ def apply_header_style_green(worksheet, df):
             last_col_letter = chr(65 + remainder) + last_col_letter
 
     header_range = f"A1:{last_col_letter}1"
+
+    # --- スタイル設定 ---
+    bg_color = _hex_to_color(backgroundColor)
+    fg_color = _hex_to_color(textColor)
+
     header_format = CellFormat(
-        backgroundColor=Color(red=53/255, green=104/255, blue=84/255),
-        textFormat=TextFormat(bold=True, foregroundColor=Color(1, 1, 1)),
+        backgroundColor=bg_color,
+        textFormat=TextFormat(
+            bold=bold,
+            foregroundColor=fg_color,
+            fontSize=fontSize
+        ),
         horizontalAlignment="CENTER",
         verticalAlignment="MIDDLE",
     )
 
-    # --- ヘッダー行のフォーマット適用 ---
+    # --- フォーマット適用 ---
     format_cell_range(worksheet, header_range, header_format)
 
-    # --- リクエスト群を作成 ---
-    requests = []
+    # --- 固定 & 高さ変更 ---
+    requests = [
+        {
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": worksheet.id,
+                    "gridProperties": {"frozenRowCount": 1},
+                },
+                "fields": "gridProperties.frozenRowCount",
+            }
+        },
+        {
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "dimension": "ROWS",
+                    "startIndex": 0,  # 1行目はインデックス0
+                    "endIndex": 1,
+                },
+                "properties": {"pixelSize": int(header_height_px)},
+                "fields": "pixelSize",
+            }
+        },
+    ]
 
-    # 1️⃣ 1行目を固定
-    requests.append({
-        "updateSheetProperties": {
-            "properties": {
-                "sheetId": worksheet.id,
-                "gridProperties": {"frozenRowCount": 1},
-            },
-            "fields": "gridProperties.frozenRowCount",
-        }
-    })
-
-    # 2️⃣ 1行目の高さを40pxに変更
-    requests.append({
-        "updateDimensionProperties": {
-            "range": {
-                "sheetId": worksheet.id,
-                "dimension": "ROWS",
-                "startIndex": 0,  # 1行目はインデックス0
-                "endIndex": 1,
-            },
-            "properties": {"pixelSize": 40},  # ← 高さを40pxに設定
-            "fields": "pixelSize",
-        }
-    })
-
-    # --- 一括適用 ---
+    # --- 一括リクエスト実行 ---
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet.id, body={"requests": requests}
     ).execute()
+
+    print(
+        f"✅ Header style applied (bg={backgroundColor}, text={textColor}, bold={bold}, size={fontSize}, height={header_height_px}px)"
+    )
 
 # ===============================
 # 🔍 フィルターを1行目に適用
