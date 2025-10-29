@@ -20,7 +20,6 @@ st.markdown(f"""
             <img src="{logo_url}" class="logo" alt="App Logo">
             <span class="title">Nomic Map to Sheet</span>
         </div>
-        <p>ideaflow landscape </p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -28,11 +27,10 @@ st.markdown(f"""
 # 🔳 タブメニュー（横サイドバー風）
 # ================================
 tabs = {
-    "nomic": "🧬 Nomic設定",
-    "google": "🔑 Google認証",
-    "sheet": "📊 スプレッドシート",
-    "data": "🧠 データ設定",
-    "export": "🚀 出力・実行",
+    "nomic": "Nomic",
+    "output": "Output",
+    "design": "Design",
+    "setting": "Setting",
 }
 
 # 3カラム構成（左右スペース・中央）
@@ -53,29 +51,24 @@ with col2:
     page = st.session_state.page
 
     if page == "nomic":
-        st.markdown("<h2>🧬 Nomic設定</h2>", unsafe_allow_html=True)
-        st.text_input("APIトークン")
-        st.text_input("ドメイン")
-        st.text_input("マップ名")
+        st.markdown("<h2>Nomic</h2>", unsafe_allow_html=True)
+        st.text_input("API Token")
+        st.text_input("Domain")
+        st.text_input("Map URL")
 
-    elif page == "google":
-        st.markdown("<h2>🔑 Google認証</h2>", unsafe_allow_html=True)
-        st.file_uploader("Service Account JSONファイルをアップロード")
+    elif page == "output":
+        st.markdown("<h2>Output</h2>", unsafe_allow_html=True)
+        st.text_input("sheet URL")
+        st.text_input("sheet name")
 
-    elif page == "sheet":
-        st.markdown("<h2>📊 スプレッドシート設定</h2>", unsafe_allow_html=True)
+    elif page == "design":
+        st.markdown("<h2>Design</h2>", unsafe_allow_html=True)
         st.text_input("スプレッドシートID")
         st.text_input("シート名")
 
-    elif page == "data":
-        st.markdown("<h2>🧠 データ設定</h2>", unsafe_allow_html=True)
-        st.checkbox("カテゴリごとに色を自動付与")
+    elif page == "setting":
+        st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
         st.text_input("カテゴリ列名")
-
-    elif page == "export":
-        st.markdown("<h2>🚀 出力・実行</h2>", unsafe_allow_html=True)
-        st.button("スプレッドシートへ書き出す", use_container_width=True)
-        st.info("ここに出力結果を表示予定。")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
