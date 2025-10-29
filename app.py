@@ -98,7 +98,6 @@ body, .stApp {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    background-color: #000;
     border-bottom: 1px solid #333;
     padding: 16px 40px;
 }
@@ -124,8 +123,6 @@ body, .stApp {
     flex-direction: column;
     gap: 12px;
     padding: 20px 10px;
-    background-color: #1a1a1a;
-    border-right: 1px solid #333;
     height: 100%;
 }
 div[data-testid="stButton"] button {
