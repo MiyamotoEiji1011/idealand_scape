@@ -161,6 +161,7 @@ h2 {
     padding-left: 12px;
     margin-bottom: 20px;
     color: #fff;
+    background-color: #222;
 }
 
 /* ===== 入力エリア ===== */
