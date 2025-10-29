@@ -114,19 +114,6 @@ with col2:
                 st.session_state.df_master = df_master
                 st.success(f"✅ Data exported to {st.session_state.output_sheet_name or 'unspecified sheet'}")
 
-        # ownload button
-        if st.button("Download CSV"):
-            if "df_master" in st.session_state and st.session_state.df_master is not None:
-                csv_data = st.session_state.df_master.to_csv(index=False).encode("utf-8-sig")
-                st.download_button(
-                    label="Download CSV file",
-                    data=csv_data,
-                    file_name="nomic_master_data.csv",
-                    mime="text/csv",
-                )
-            else:
-                st.warning("⚠️ No CSV data available. Please run 'Run Output' first.")
-
         # Data preview
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
