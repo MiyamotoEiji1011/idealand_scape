@@ -11,13 +11,7 @@
             "fontFamily": "Roboto",
             "fontSize": 10,
             "bold": true,
-            "italic": false,
-            "foregroundColor": "#434343",
-            "wrap": false,
-            "horizontal": "LEFT",
-            "vertical": "MIDDLE",
-            "columnWidth": 80,
-            "exclude_header": true
+            "columnWidth": 80
         },
         "B": {
             "fontFamily": "Roboto",
