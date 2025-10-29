@@ -61,6 +61,9 @@ with col2:
         st.text_input("sheet URL")
         st.text_input("sheet name")
 
+        if st.button("Go output!"):
+            st.success("Succes ooutput sheet!")
+
     elif page == "design":
         st.markdown("<h2>Design</h2>", unsafe_allow_html=True)
         st.text_input("スプレッドシートID")
