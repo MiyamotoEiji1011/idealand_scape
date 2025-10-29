@@ -122,7 +122,7 @@ body, .stApp {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 20px 10px;
+    padding: 20px 30px;
     height: 100%;
 }
 div[data-testid="stButton"] button {
