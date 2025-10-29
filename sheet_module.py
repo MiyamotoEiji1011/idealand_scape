@@ -43,25 +43,16 @@ def write_sheet(spreadsheet_url, sheet_name, service_account_info, df_master):
         reset_sheet(worksheet)
         base_sheet_design(worksheet, df_master)
 
-        apply_header_style(
-            worksheet,
-            df_master,
-            backgroundColor="#002B5B",
-            textColor="#FFD54F",
-            bold=False,
-            fontSize=12,
-            header_height_px=60
-        )
+        apply_header_style(worksheet, df_master) #データ変更可
         apply_filter_to_header(worksheet, df_master)
         apply_wrap_text_to_header_row(worksheet, df_master)
 
-        apply_green_outer_border(worksheet, df_master)
+        apply_planet_border(worksheet, df_master) #データ変更可
 
         dropdowns(worksheet, df_master)
 
-        style_column(worksheet, df_master, "B",
-             fontSize=12, bold=True,
-             backgroundColor="#FFF7ED",
+        style_column(worksheet, df_master, "C",
+             fontSize=15, bold=False,
              columnWidth=160)
 
         print(f"✅ Successfully wrote data to '{sheet_name}' in spreadsheet {spreadsheet_id}")
@@ -566,20 +557,37 @@ def dropdowns(worksheet, df):
         # 非空行が無い場合はスルー（プルダウンも付けない）
 
 
-def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
-    """外枠・グループ線を緑で描画し、中の格子を非表示にする"""
+def apply_planet_border(
+    worksheet,
+    df,
+    *,
+    has_planet: bool = True,               # 惑星（外枠）を描くかどうか
+    planet_color: str = "#356854",         # 惑星（外枠）の色（デフォルト:緑）
+    start_row: int = 1,
+    start_col: int = 1,
+):
+    """
+    外枠・グループ線を惑星のように描画する。
+    惑星の色と「そもそも惑星を作るかどうか」を制御可能。
+
+    Args:
+        worksheet: gspread Worksheet
+        df: pandas DataFrame
+        has_planet: True なら外枠を描画、False なら全て削除
+        planet_color: 惑星カラー (#RRGGBB)
+        start_row, start_col: 表の開始位置（1始まり）
+    """
     if df.empty:
         return
 
     spreadsheet = worksheet.spreadsheet
     service = build("sheets", "v4", credentials=spreadsheet.client.auth)
-
     num_rows = len(df)
     num_cols = len(df.columns)
 
-    green = {"red": 53/255, "green": 104/255, "blue": 84/255}
+    color = _hex_to_rgb_color(planet_color)
 
-    # --- まず全体の内側線を削除（白ではなく完全非表示） ---
+    # --- まず全体の内側線を削除 ---
     clear_inner_lines = {
         "updateBorders": {
             "range": {
@@ -594,7 +602,15 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
         }
     }
 
-    # --- 外枠を緑で描画 ---
+    # 枠線を描かない場合（惑星を消す）
+    if not has_planet:
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet.id, body={"requests": [clear_inner_lines]}
+        ).execute()
+        print("🪐 Planet border removed.")
+        return
+
+    # --- 外枠を描く ---
     draw_outer_borders = {
         "updateBorders": {
             "range": {
@@ -604,14 +620,14 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
                 "startColumnIndex": start_col - 1,
                 "endColumnIndex": start_col - 1 + num_cols,
             },
-            "top": {"style": "SOLID", "width": 2, "color": green},
-            "bottom": {"style": "SOLID", "width": 2, "color": green},
-            "left": {"style": "SOLID", "width": 2, "color": green},
-            "right": {"style": "SOLID", "width": 2, "color": green},
+            "top": {"style": "SOLID", "width": 2, "color": color},
+            "bottom": {"style": "SOLID", "width": 2, "color": color},
+            "left": {"style": "SOLID", "width": 2, "color": color},
+            "right": {"style": "SOLID", "width": 2, "color": color},
         }
     }
 
-    # --- グループ境界線を追加（列ごとの緑線） ---
+    # --- グループ境界線を追加 ---
     group_right_edges = [5, 10, 12, 15, 18, 21]
     group_lines = []
     for edge_index in group_right_edges:
@@ -624,7 +640,7 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
                     "startColumnIndex": edge_index,
                     "endColumnIndex": edge_index + 1,
                 },
-                "left": {"style": "SOLID", "width": 2, "color": green},
+                "left": {"style": "SOLID", "width": 2, "color": color},
             }
         })
 
@@ -635,6 +651,7 @@ def apply_green_outer_border(worksheet, df, start_row=1, start_col=1):
         spreadsheetId=spreadsheet.id, body={"requests": requests}
     ).execute()
 
+    print(f"🪐 Planet border applied in color {planet_color}")
 
 # ===============================
 # 🟩 1行目ヘッダーを緑背景＋白文字＋太字にする
