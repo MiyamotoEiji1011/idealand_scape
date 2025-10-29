@@ -556,6 +556,18 @@ def dropdowns(worksheet, df):
             ).execute()
         # 非空行が無い場合はスルー（プルダウンも付けない）
 
+def _hex_to_rgb_color(hex_color: str):
+    """#RRGGBB → Google Sheets Color dict"""
+    hex_color = hex_color.strip()
+    if not hex_color.startswith("#"):
+        raise ValueError("Color must start with '#' like #RRGGBB")
+    hex_color = hex_color[1:]
+    if len(hex_color) == 3:
+        hex_color = "".join([c * 2 for c in hex_color])
+    r = int(hex_color[0:2], 16) / 255.0
+    g = int(hex_color[2:4], 16) / 255.0
+    b = int(hex_color[4:6], 16) / 255.0
+    return {"red": r, "green": g, "blue": b}
 
 def apply_planet_border(
     worksheet,
