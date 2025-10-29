@@ -121,8 +121,8 @@ body, .stApp {
 .side-menu {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 20px 30px;
+    gap: 30px;
+    padding: 20px 10px;
     height: 100%;
 }
 div[data-testid="stButton"] button {
