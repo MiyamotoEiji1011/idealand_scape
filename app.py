@@ -1,10 +1,11 @@
 import streamlit as st
 
+# ================================
+# 🪄 ページ設定
+# ================================
 st.set_page_config(page_title="Nomic Map to Sheet", layout="wide")
 
-# ================================
-# 🌱 初期ページ
-# ================================
+# 初期ページ設定
 if "page" not in st.session_state:
     st.session_state.page = "nomic"
 
@@ -23,7 +24,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ================================
-# 🔶 タブメニュー
+# 🔳 タブメニュー（横サイドバー風）
 # ================================
 tabs = {
     "nomic": "🧬 Nomic設定",
@@ -33,111 +34,161 @@ tabs = {
     "export": "🚀 出力・実行",
 }
 
-cols = st.columns(len(tabs))
-for i, (key, label) in enumerate(tabs.items()):
-    with cols[i]:
+# 2カラムレイアウト
+col1, col2 = st.columns([1, 3])
+
+with col1:
+    st.markdown("<div class='side-menu'>", unsafe_allow_html=True)
+    for key, label in tabs.items():
         active = st.session_state.page == key
-        bg = "#ff7f32" if active else "#ffffff"
-        color = "#fff" if active else "#333"
-        shadow = "0 3px 8px rgba(0,0,0,0.08)" if active else "0 2px 6px rgba(0,0,0,0.05)"
+        style = "active-tab" if active else "tab-btn"
         if st.button(label, key=f"tab_{key}", use_container_width=True):
             st.session_state.page = key
-        st.markdown(
-            f"<style>div[data-testid='stButton'][key='tab_{key}'] button {{background:{bg};color:{color};border:none;border-radius:8px;padding:10px 0;font-weight:600;box-shadow:{shadow};transition:all 0.25s;}}</style>",
-            unsafe_allow_html=True,
-        )
-
-st.markdown("<hr class='tab-line'>", unsafe_allow_html=True)
+        st.markdown(f"<style>div[data-testid='stButton'][key='tab_{key}'] button{{}} </style>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================
 # 🪟 メインコンテンツ
 # ================================
-st.markdown("<div class='content'>", unsafe_allow_html=True)
-page = st.session_state.page
+with col2:
+    st.markdown("<div class='content'>", unsafe_allow_html=True)
+    page = st.session_state.page
 
-if page == "nomic":
-    st.markdown("<h2 class='section-title'>🧬 Nomic設定</h2>", unsafe_allow_html=True)
-    st.text_input("APIトークン")
-    st.text_input("ドメイン")
-    st.text_input("マップ名")
+    if page == "nomic":
+        st.markdown("<h2>🧬 Nomic設定</h2>", unsafe_allow_html=True)
+        st.text_input("APIトークン")
+        st.text_input("ドメイン")
+        st.text_input("マップ名")
 
-elif page == "google":
-    st.markdown("<h2 class='section-title'>🔑 Google認証</h2>", unsafe_allow_html=True)
-    st.file_uploader("Service Account JSONファイルをアップロード")
+    elif page == "google":
+        st.markdown("<h2>🔑 Google認証</h2>", unsafe_allow_html=True)
+        st.file_uploader("Service Account JSONファイルをアップロード")
 
-elif page == "sheet":
-    st.markdown("<h2 class='section-title'>📊 スプレッドシート設定</h2>", unsafe_allow_html=True)
-    st.text_input("スプレッドシートID")
-    st.text_input("シート名")
+    elif page == "sheet":
+        st.markdown("<h2>📊 スプレッドシート設定</h2>", unsafe_allow_html=True)
+        st.text_input("スプレッドシートID")
+        st.text_input("シート名")
 
-elif page == "data":
-    st.markdown("<h2 class='section-title'>🧠 データ設定</h2>", unsafe_allow_html=True)
-    st.checkbox("カテゴリごとに色を自動付与")
-    st.text_input("カテゴリ列名")
+    elif page == "data":
+        st.markdown("<h2>🧠 データ設定</h2>", unsafe_allow_html=True)
+        st.checkbox("カテゴリごとに色を自動付与")
+        st.text_input("カテゴリ列名")
 
-elif page == "export":
-    st.markdown("<h2 class='section-title'>🚀 出力・実行</h2>", unsafe_allow_html=True)
-    st.button("スプレッドシートへ書き出す", use_container_width=True)
-    st.info("ここに出力結果を表示予定。")
+    elif page == "export":
+        st.markdown("<h2>🚀 出力・実行</h2>", unsafe_allow_html=True)
+        st.button("スプレッドシートへ書き出す", use_container_width=True)
+        st.info("ここに出力結果を表示予定。")
 
-st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ================================
-# 💅 CSS — スタイリッシュ最小構成
+# 💅 CSS — 黒×白ベース、横タブ構成
 # ================================
 st.markdown("""
 <style>
+/* ===== 全体 ===== */
 body, .stApp {
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
-    color: #222;
+    background-color: #111 !important;
+    color: #fff !important;
     font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* ヘッダー */
+/* ===== ヘッダー ===== */
 .header {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
+    background-color: #000;
+    border-bottom: 1px solid #333;
     padding: 16px 40px;
-    border-bottom: 1px solid #eee;
-    background-color: #fff;
 }
 .header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
 }
 .logo {
-    height: 48px;
+    height: 40px;
     width: auto;
     object-fit: contain;
 }
 .title {
     font-size: 20px;
     font-weight: 600;
-    letter-spacing: 0.3px;
+    color: #fff;
 }
 
-/* コンテンツエリア */
-.content {
-    max-width: 900px;
-    margin: 40px auto;
-    padding: 0 20px 60px;
+/* ===== 左側タブメニュー ===== */
+.side-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 10px;
+    background-color: #1a1a1a;
+    border-right: 1px solid #333;
+    height: 100%;
 }
-
-/* タブ下ライン */
-.tab-line {
+div[data-testid="stButton"] button {
+    background-color: #222;
+    color: #fff;
     border: none;
-    border-bottom: 1px solid #ddd;
-    margin: 1rem 0 2rem;
+    border-radius: 6px;
+    padding: 10px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+div[data-testid="stButton"] button:hover {
+    background-color: #333;
+}
+div[data-testid="stButton"] button:focus {
+    outline: none;
+}
+div[data-testid="stButton"] button:has(strong) {
+    background-color: #fff;
+    color: #000;
 }
 
-/* セクションタイトル */
-.section-title {
-    border-left: 4px solid #ff7f32;
-    padding-left: 10px;
-    margin-bottom: 1.5rem;
-    font-weight: 700;
-    color: #222;
+/* アクティブなタブ */
+.active-tab {
+    background-color: #fff !important;
+    color: #000 !important;
+}
+
+/* ===== メインエリア ===== */
+.content {
+    padding: 40px;
+    background-color: #111;
+}
+h2 {
+    border-left: 4px solid #fff;
+    padding-left: 12px;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+/* ===== 入力エリア ===== */
+input, textarea {
+    background-color: #000 !important;
+    color: #fff !important;
+    border: 1px solid #444 !important;
+    border-radius: 4px;
+    transition: 0.2s ease-in-out;
+}
+input:focus, textarea:focus {
+    border-color: #fff !important;
+    box-shadow: 0 0 4px rgba(255,255,255,0.4);
+}
+
+/* ===== ボタン ===== */
+button[kind="primary"] {
+    background-color: #fff !important;
+    color: #000 !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-weight: 600;
+}
+button[kind="primary"]:hover {
+    background-color: #ddd !important;
 }
 </style>
 """, unsafe_allow_html=True)
