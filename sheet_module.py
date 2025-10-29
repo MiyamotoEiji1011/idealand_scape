@@ -210,16 +210,17 @@ def style_column(
     bold: bool = False,
     italic: bool = False,
     foregroundColor: str = "#434343",
-    backgroundColor: str | None = None,   # Noneなら背景は触らない
+    # 背景は触らない（後方互換のため受け取るが無視）
+    backgroundColor: str | None = None,
     wrap: bool | str = False,             # True/False or "WRAP"/"CLIP"/"OVERFLOW"
     horizontal: str = "LEFT",             # "LEFT"/"CENTER"/"RIGHT"
     vertical: str = "MIDDLE",             # "TOP"/"MIDDLE"/"BOTTOM"
-    columnWidth: int | None = None,       # 例: 120（px）; Noneなら幅は触らない
+    columnWidth: int | None = None,       # px
     exclude_header: bool = True,
-    numberFormat: str | None = None       # 追加: "PERCENT" / "NUMBER" / "CURRENCY" など
+    numberFormat: str | None = None       # "PERCENT" / "NUMBER" / "CURRENCY" など
 ):
     """
-    指定列にスタイル + 列幅（任意）を適用。数値フォーマットも指定可能。
+    指定列にスタイル + 列幅（任意）を適用。背景色は一切変更しない。
     1行目（ヘッダー）は exclude_header=True のとき除外。
     """
     if df is None or df.empty:
@@ -230,7 +231,7 @@ def style_column(
     start_row = 1 if exclude_header else 0
     end_row = num_rows
 
-    # wrap正規化
+    # wrap 正規化
     if isinstance(wrap, bool):
         wrap_mode = "WRAP" if wrap else "OVERFLOW_CELL"
     else:
@@ -241,15 +242,10 @@ def style_column(
             raise ValueError("wrap must be bool or 'WRAP'/'CLIP'/'OVERFLOW'")
         wrap_mode = wm
 
-    # 色処理
+    # 文字色
     fg = _hex_to_color(foregroundColor) if isinstance(foregroundColor, str) else foregroundColor
-    bg = None
-    if backgroundColor:
-        if backgroundColor.strip() == "":
-            backgroundColor = None
-        else:
-            bg = _hex_to_color(backgroundColor)
 
+    # ここで背景はセットしない（= 現状維持）
     fmt = {
         "textFormat": {
             "fontFamily": fontFamily,
@@ -262,27 +258,28 @@ def style_column(
         "verticalAlignment": vertical.upper(),
         "wrapStrategy": wrap_mode,
     }
-    if bg is not None:
-        fmt["backgroundColor"] = bg
 
-    # --- 🧮 数値フォーマット設定 ---
+    # 数値フォーマット（任意）
+    fields = ["userEnteredFormat.textFormat",
+              "userEnteredFormat.horizontalAlignment",
+              "userEnteredFormat.verticalAlignment",
+              "userEnteredFormat.wrapStrategy"]
     if numberFormat:
-        format_type = numberFormat.upper()
-        # PERCENT, NUMBER, CURRENCY, DATE, TIME, TEXT などが指定可
-        if format_type == "PERCENT":
+        fmt_type = numberFormat.upper()
+        if fmt_type == "PERCENT":
             fmt["numberFormat"] = {"type": "PERCENT", "pattern": "0.00%"}
-        elif format_type == "NUMBER":
+        elif fmt_type == "NUMBER":
             fmt["numberFormat"] = {"type": "NUMBER", "pattern": "0.00"}
-        elif format_type == "CURRENCY":
+        elif fmt_type == "CURRENCY":
             fmt["numberFormat"] = {"type": "CURRENCY", "pattern": "¥#,##0.00"}
         else:
-            fmt["numberFormat"] = {"type": format_type}
+            fmt["numberFormat"] = {"type": fmt_type}
+        fields.append("userEnteredFormat.numberFormat")
 
     service = build("sheets", "v4", credentials=worksheet.spreadsheet.client.auth)
 
     requests = []
-
-    # 1️⃣ スタイル適用
+    # スタイル適用（背景を含まない fields だけ指定）
     requests.append({
         "repeatCell": {
             "range": {
@@ -293,11 +290,11 @@ def style_column(
                 "endColumnIndex": col_idx + 1,
             },
             "cell": {"userEnteredFormat": fmt},
-            "fields": "userEnteredFormat",
+            "fields": ",".join(fields),
         }
     })
 
-    # 2️⃣ 列幅設定
+    # 列幅（任意）
     if columnWidth is not None and int(columnWidth) > 0:
         requests.append({
             "updateDimensionProperties": {
