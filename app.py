@@ -45,37 +45,50 @@ for i, (key, label) in enumerate(tabs.items()):
         if st.button(btn_label, key=f"tab_{key}", use_container_width=True):
             st.session_state.page = key
 
-st.markdown("<div class='tab-underline'></div>", unsafe_allow_html=True)
-
 # ================================
 # 🪟 メインコンテンツ
 # ================================
+st.markdown("<div class='content-area'>", unsafe_allow_html=True)
+
 page = st.session_state.page
 
 if page == "nomic":
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("🧬 Nomic設定")
     st.text_input("APIトークン", key="nomic_token")
     st.text_input("ドメイン", key="nomic_domain")
     st.text_input("マップ名", key="nomic_map")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif page == "google":
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("🔑 Google認証")
     st.file_uploader("Service Account JSONファイルをアップロード")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif page == "sheet":
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("📊 スプレッドシート設定")
     st.text_input("スプレッドシートID", key="sheet_id")
     st.text_input("シート名", key="sheet_name")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif page == "data":
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("🧠 データ設定")
     st.checkbox("カテゴリごとに色を自動付与")
     st.text_input("カテゴリ列名")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif page == "export":
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.header("🚀 出力・実行")
     st.button("スプレッドシートへ書き出す", use_container_width=True)
     st.info("ここに出力結果を表示予定。")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ================================
 # 💅 外部CSSを読み込む

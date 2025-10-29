@@ -141,3 +141,47 @@ hr {
     border: none;
     border-bottom: 1px solid #eee;
 }
+
+/* ===============================
+   🧭 コンテンツエリア調整（中央寄せ）
+   =============================== */
+
+/* メインのコンテンツ領域を中央に寄せる */
+.content-area {
+    max-width: 900px;
+    /* 横幅の最大値（好みで調整：800〜1000px推奨） */
+    margin: 0 auto;
+    /* 中央寄せ */
+    padding: 40px 20px 60px;
+    /* 上下に余白 */
+}
+
+/* 入力フォーム全体をカード風に */
+.card {
+    background-color: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 30px 40px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 40px;
+}
+
+/* フォームのタイトルに余白を追加 */
+.card h2,
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 1.2rem;
+    border-left: 4px solid #ff6a00;
+    padding-left: 12px;
+}
+
+/* テキスト入力の幅を調整（中央寄せを維持） */
+.card input {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* カード間の呼吸感を調整 */
+.card+.card {
+    margin-top: 50px;
+}
