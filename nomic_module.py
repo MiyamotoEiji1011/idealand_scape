@@ -186,36 +186,60 @@ def add_detailed_scores(df_master, df_topics, df_data, n, f, m):
             df_master.at[idx, ratio_col] = f"{round(ratio, 1)}%"
     return df_master
 
+def _first_existing_col(df, candidates):
+    for c in candidates:
+        if c in df.columns:
+            return c
+    return None
+
 def add_best_ideas(df_master, df_topics, df_data, n, f, m):
+    # ---- 合計スコア（型安全）
     df_data["total_score"] = (
-        pd.to_numeric(df_data[n], errors="coerce").fillna(0.0) +
-        pd.to_numeric(df_data[f], errors="coerce").fillna(0.0) +
-        pd.to_numeric(df_data[m], errors="coerce").fillna(0.0)
+        pd.to_numeric(df_data.get(n, 0), errors="coerce").fillna(0.0) +
+        pd.to_numeric(df_data.get(f, 0), errors="coerce").fillna(0.0) +
+        pd.to_numeric(df_data.get(m, 0), errors="coerce").fillna(0.0)
     )
 
-    for col in ["アイデア名","Summary","カテゴリー","合計スコア","新規性スコア","市場性スコア","実現性スコア"]:
-        df_master[col] = "" if col in ["アイデア名","Summary","カテゴリー"] else 0
+    # ---- 文字列系列の候補（必要なら増やしてOK）
+    title_candidates   = ["title", "タイトル", "idea_title", "name", "document_title", "node_title"]
+    summary_candidates = ["summary", "要約", "概要", "説明"]
+    category_candidates= ["category", "カテゴリ", "カテゴリー"]
 
+    title_col    = _first_existing_col(df_data, title_candidates)
+    summary_col  = _first_existing_col(df_data, summary_candidates)
+    category_col = _first_existing_col(df_data, category_candidates)
+
+    # ---- 出力列の型を最初から正しい型で初期化（FutureWarning回避）
+    for col in ["アイデア名", "Summary", "カテゴリー"]:
+        df_master[col] = ""
+    for col in ["合計スコア", "新規性スコア", "市場性スコア", "実現性スコア"]:
+        df_master[col] = 0.0
+
+    # ---- 以降は通常処理
     for idx, row in df_master.iterrows():
         if row["depth"] == "1":
-            mask = df_topics["topic_depth_1"] == row["Nomic Topic: Broad"]
+            mask = (df_topics["topic_depth_1"] == row["Nomic Topic: Broad"])
         elif row["depth"] == "2":
-            mask = df_topics["topic_depth_2"] == row["Nomic Topic: Medium"]
+            mask = (df_topics["topic_depth_2"] == row["Nomic Topic: Medium"])
         else:
             continue
 
-        df_sub = df_data[df_data["row_number"].isin(df_topics.loc[mask, "row_number"])]
+        rows = df_topics.loc[mask, "row_number"]
+        df_sub = df_data[df_data["row_number"].isin(rows)]
         if df_sub.empty:
             continue
 
         best = df_sub.sort_values(by="total_score", ascending=False).iloc[0]
-        df_master.at[idx, "アイデア名"]   = best.get("title", "")
-        df_master.at[idx, "Summary"]     = best.get("summary", "")
-        df_master.at[idx, "カテゴリー"]   = best.get("category", "")
-        df_master.at[idx, "合計スコア"]   = float(best.get("total_score", 0))
-        df_master.at[idx, "新規性スコア"] = float(best.get(n, 0))
-        df_master.at[idx, "市場性スコア"] = float(best.get(m, 0))
-        df_master.at[idx, "実現性スコア"] = float(best.get(f, 0))
+
+        # 見つかった列だけ使う（無ければ空文字）
+        df_master.at[idx, "アイデア名"] = str(best[title_col]) if title_col else ""
+        df_master.at[idx, "Summary"]   = str(best[summary_col]) if summary_col else ""
+        df_master.at[idx, "カテゴリー"] = str(best[category_col]) if category_col else ""
+
+        df_master.at[idx, "合計スコア"]   = float(best.get("total_score", 0.0))
+        df_master.at[idx, "新規性スコア"] = float(pd.to_numeric(best.get(n, 0), errors="coerce") or 0.0)
+        df_master.at[idx, "市場性スコア"] = float(pd.to_numeric(best.get(m, 0), errors="coerce") or 0.0)
+        df_master.at[idx, "実現性スコア"] = float(pd.to_numeric(best.get(f, 0), errors="coerce") or 0.0)
     return df_master
 
 
