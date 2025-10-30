@@ -221,64 +221,74 @@ with col2:
     elif page == "setting":
         st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
 
-        # 各パラメータの選択肢リストを定義
+        # 各パラメータの選択肢リスト
         options_title = ['title', 'タイトル', 'その他']
         options_summary = ['summary', '概要', 'その他']
-        options_category = ['category','アイデアカテゴリー', 'その他']
+        options_category = ['category', 'アイデアカテゴリー', 'その他']
         options_novelty = ['novelty_score', '新規性スコア', 'novelty_score_', 'その他']
         options_feasibility = ['feasibility_score', '実現可能性スコア', 'feasibility_score_', 'その他']
         options_marketability = ['marketability_score', '市場性スコア', 'marketability_score_', 'その他']
 
         # ---------------------------
-        # 各項目の selectbox
+        # 選択値を session_state から復元（初回だけ None）
         # ---------------------------
-        title_selected = st.selectbox('Title', options_title, key='title_select')
-        summary_selected = st.selectbox('Summary', options_summary, key='summary_select')
-        category_selected = st.selectbox('Category', options_category, key='category_select')
-        novelty_score_selected = st.selectbox('Novelty score', options_novelty, key='novelty_select')
-        feasibility_score_selected = st.selectbox('Feasibility score', options_feasibility, key='feasibility_select')
-        marketability_score_selected = st.selectbox('Marketability score', options_marketability, key='marketability_select')
+        title_default = st.session_state.get("title", options_title[0])
+        summary_default = st.session_state.get("summary", options_summary[0])
+        category_default = st.session_state.get("category", options_category[0])
+        novelty_default = st.session_state.get("novelty_score", options_novelty[0])
+        feasibility_default = st.session_state.get("feasibility_score", options_feasibility[0])
+        marketability_default = st.session_state.get("marketability_score", options_marketability[0])
 
         # ---------------------------
-        # 自由入力対応（各項目で "その他" 選択時）
+        # 各 selectbox に「value」パラメータを指定して保持
+        # ---------------------------
+        title_selected = st.selectbox('Title', options_title, key='title_select', index=options_title.index(title_default) if title_default in options_title else 0)
+        summary_selected = st.selectbox('Summary', options_summary, key='summary_select', index=options_summary.index(summary_default) if summary_default in options_summary else 0)
+        category_selected = st.selectbox('Category', options_category, key='category_select', index=options_category.index(category_default) if category_default in options_category else 0)
+        novelty_score_selected = st.selectbox('Novelty score', options_novelty, key='novelty_select', index=options_novelty.index(novelty_default) if novelty_default in options_novelty else 0)
+        feasibility_score_selected = st.selectbox('Feasibility score', options_feasibility, key='feasibility_select', index=options_feasibility.index(feasibility_default) if feasibility_default in options_feasibility else 0)
+        marketability_score_selected = st.selectbox('Marketability score', options_marketability, key='marketability_select', index=options_marketability.index(marketability_default) if marketability_default in options_marketability else 0)
+
+        # ---------------------------
+        # 「その他」を選んだ場合のみ自由入力を表示
         # ---------------------------
         if title_selected == 'その他':
-            custom_title = st.text_input('Title parameter', key='title_custom')
+            custom_title = st.text_input('Title parameter', value=st.session_state.get("title_custom", ""), key='title_custom')
             title_value = custom_title if custom_title else None
         else:
             title_value = title_selected
         st.session_state.title = title_value
 
         if summary_selected == 'その他':
-            custom_summary = st.text_input('Summary parameter', key='summary_custom')
+            custom_summary = st.text_input('Summary parameter', value=st.session_state.get("summary_custom", ""), key='summary_custom')
             summary_value = custom_summary if custom_summary else None
         else:
             summary_value = summary_selected
         st.session_state.summary = summary_value
 
         if category_selected == 'その他':
-            custom_category = st.text_input('Category parameter', key='category_custom')
+            custom_category = st.text_input('Category parameter', value=st.session_state.get("category_custom", ""), key='category_custom')
             category_value = custom_category if custom_category else None
         else:
             category_value = category_selected
         st.session_state.category = category_value
 
         if novelty_score_selected == 'その他':
-            custom_novelty = st.text_input('Novelty parameter', key='novelty_custom')
+            custom_novelty = st.text_input('Novelty parameter', value=st.session_state.get("novelty_custom", ""), key='novelty_custom')
             novelty_value = custom_novelty if custom_novelty else None
         else:
             novelty_value = novelty_score_selected
         st.session_state.novelty_score = novelty_value
 
         if feasibility_score_selected == 'その他':
-            custom_feasibility = st.text_input('Feasibility parameter', key='feasibility_custom')
+            custom_feasibility = st.text_input('Feasibility parameter', value=st.session_state.get("feasibility_custom", ""), key='feasibility_custom')
             feasibility_value = custom_feasibility if custom_feasibility else None
         else:
             feasibility_value = feasibility_score_selected
         st.session_state.feasibility_score = feasibility_value
 
         if marketability_score_selected == 'その他':
-            custom_marketability = st.text_input('Marketability parameter', key='marketability_custom')
+            custom_marketability = st.text_input('Marketability parameter', value=st.session_state.get("marketability_custom", ""), key='marketability_custom')
             marketability_value = custom_marketability if custom_marketability else None
         else:
             marketability_value = marketability_score_selected
