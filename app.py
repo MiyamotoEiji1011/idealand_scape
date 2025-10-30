@@ -37,7 +37,11 @@ default_state = {
     "output_sheet_name": "シート1",
     "design_sheet_id": "",
     "design_sheet_name": "",
-    "setting_category_col": ""
+    "setting_category_col": "",
+    "novelty_score":"novelty_score",
+    "feasibility_score":"feasibility_score",
+    "marketability_score":"marketability_score"
+
 }
 
 for key, value in default_state.items():
@@ -65,7 +69,8 @@ st.markdown(f"""
 # ===================================
 tabs = {
     "nomic": "Nomic",
-    "output": "Output"
+    "output": "Output",
+    "setting": "Setting"
 }
 
 spacer1, col1, spacer2, col2, spacer3 = st.columns([0.5, 1, 0.1, 3, 0.5])
@@ -174,7 +179,10 @@ with col2:
             df_master, err = nomic_module.create_nomic_dataset(
                 st.session_state.nomic_api_token,
                 st.session_state.nomic_domain,
-                st.session_state.nomic_map_url
+                st.session_state.nomic_map_url,
+                st.session_state.novelty_score,
+                st.session_state.feasibility_score,
+                st.session_state.marketability_score
             )
 
             with open("./design/defalte.json", "r", encoding="utf-8") as f:
@@ -204,7 +212,11 @@ with col2:
         if "df_master" in st.session_state and st.session_state.df_master is not None:
             st.dataframe(st.session_state.df_master.head(20))
 
-
+    elif page == "setting":
+            st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
+            st.session_state.novelty_score = st.text_input("Novelty score", value="novelty_score")
+            st.session_state.feasibility_score = st.text_input("Feasibility score", value="feasibility_score")
+            st.session_state.marketability_score = st.text_input("Marketability score", value="marketability_score")
 
 # ===================================
 # 外部CSSを読み込む

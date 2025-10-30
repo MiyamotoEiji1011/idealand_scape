@@ -29,7 +29,7 @@ def get_data(token, domain, map_url):
     except Exception as e:
         return None,None,None, str(e)
 
-def create_nomic_dataset(token, domain, map_url):
+def create_nomic_dataset(token, domain, map_url, n,f,m):
     """Nomic Atlasからデータセットを取得し、マスターデータを生成"""
     try:
         nomic.login(token=token, domain=domain)
@@ -37,7 +37,7 @@ def create_nomic_dataset(token, domain, map_url):
         dataset = AtlasDataset(map_id)
 
         df_meta, df_topics, df_data = get_map_data(dataset.maps[0])
-        df_master = prepare_master_dataframe(df_meta, df_topics, df_data)
+        df_master = prepare_master_dataframe(df_meta, df_topics, df_data,n,f,m)
         return df_master, None
     except Exception as e:
         return None, str(e)
@@ -81,7 +81,7 @@ def add_item_count(df_master, df_topics):
     return df_master
 
 
-def add_average_scores(df_master, df_topics, df_data):
+def add_average_scores(df_master, df_topics, df_data,n,f,m):
     """各トピックの平均スコア計算"""
     df_master["平均スコア"] = 0.0
     df_master["新規性平均スコア"] = 0.0
@@ -103,18 +103,18 @@ def add_average_scores(df_master, df_topics, df_data):
             continue
 
         total_score = (
-            df_sub["市場性スコア"] +
-            df_sub["feasibility_score"] +
-            df_sub["marketability_score"]
+            df_sub[n] +
+            df_sub[f] +
+            df_sub[m]
         )
         df_master.at[idx, "平均スコア"] = round(total_score.mean(), 2)
-        df_master.at[idx, "新規性平均スコア"] = round(df_sub["novelty_score"].mean(), 2)
-        df_master.at[idx, "市場性平均スコア"] = round(df_sub["marketability_score"].mean(), 2)
-        df_master.at[idx, "実現性平均スコア"] = round(df_sub["feasibility_score"].mean(), 2)
+        df_master.at[idx, "新規性平均スコア"] = round(df_sub[n].mean(), 2)
+        df_master.at[idx, "市場性平均スコア"] = round(df_sub[m].mean(), 2)
+        df_master.at[idx, "実現性平均スコア"] = round(df_sub[f].mean(), 2)
     return df_master
 
 
-def add_excellent_ideas(df_master, df_topics, df_data):
+def add_excellent_ideas(df_master, df_topics, df_data,n,f,m):
     """優秀アイデア(12点以上)の件数と比率を追加"""
     df_master["優秀アイデア数(12点以上)"] = 0
     df_master["優秀アイデアの比率(12点以上)"] = "0%"
@@ -131,9 +131,9 @@ def add_excellent_ideas(df_master, df_topics, df_data):
             continue
 
         total_score = (
-            df_sub["novelty_score"] +
-            df_sub["feasibility_score"] +
-            df_sub["marketability_score"]
+            df_sub[n] +
+            df_sub[f] +
+            df_sub[m]
         )
         excellent_count = (total_score >= 12).sum()
         df_master.at[idx, "優秀アイデア数(12点以上)"] = excellent_count
@@ -182,12 +182,12 @@ def add_detailed_scores(df_master, df_topics, df_data):
     return df_master
 
 
-def add_best_ideas(df_master, df_topics, df_data):
+def add_best_ideas(df_master, df_topics, df_data,n,f,m):
     """トピックごとの最優秀アイデアを抽出"""
     df_data["total_score"] = (
-        df_data["novelty_score"] +
-        df_data["feasibility_score"] +
-        df_data["marketability_score"]
+        df_data[n] +
+        df_data[f] +
+        df_data[m]
     )
 
     for col in ["アイデア名","Summary","カテゴリー","合計スコア","新規性スコア","市場性スコア","実現性スコア"]:
@@ -220,12 +220,12 @@ def add_best_ideas(df_master, df_topics, df_data):
 # 🔹 メイン統合処理
 # ==============================
 
-def prepare_master_dataframe(df_meta, df_topics, df_data):
+def prepare_master_dataframe(df_meta, df_topics, df_data,n,f,m):
     """一連の処理をまとめて実行"""
     df_master = create_master_dataframe(df_meta)
     df_master = add_item_count(df_master, df_topics)
-    df_master = add_average_scores(df_master, df_topics, df_data)
-    df_master = add_excellent_ideas(df_master, df_topics, df_data)
+    df_master = add_average_scores(df_master, df_topics, df_data,n,f,m)
+    df_master = add_excellent_ideas(df_master, df_topics, df_data,n,f,m)
     df_master = add_detailed_scores(df_master, df_topics, df_data)
-    df_master = add_best_ideas(df_master, df_topics, df_data)
+    df_master = add_best_ideas(df_master, df_topics, df_data,n,f,m)
     return df_master
