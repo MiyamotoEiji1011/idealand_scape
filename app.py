@@ -214,9 +214,9 @@ with col2:
 
     elif page == "setting":
             st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
-            st.session_state.novelty_score = st.text_input("Novelty score", value="novelty_score")
-            st.session_state.feasibility_score = st.text_input("Feasibility score", value="feasibility_score")
-            st.session_state.marketability_score = st.text_input("Marketability score", value="marketability_score")
+            st.session_state.novelty_score = st.text_input("Novelty score", value=st.session_state.novelty_score)
+            st.session_state.feasibility_score = st.text_input("Feasibility score", value=st.session_state.feasibility_score)
+            st.session_state.marketability_score = st.text_input("Marketability score", value=st.session_state.marketability_score)
 
 # ===================================
 # 外部CSSを読み込む
