@@ -214,7 +214,18 @@ with col2:
 
     elif page == "setting":
             st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
-            selected_region = st.selectbox('地域を選択してください', ['東京', '大阪', '名古屋'])
+            options = ['東京', '大阪', '名古屋', 'その他']
+
+            selected = st.selectbox('地域を選択してください', options)
+
+            if selected == 'その他':
+                custom_region = st.text_input('地域名を入力してください')
+                region = custom_region if custom_region else None
+            else:
+                region = selected
+
+            st.write('選択された地域:', region)
+            
             st.session_state.novelty_score = st.text_input("Novelty score", value=st.session_state.novelty_score)
             st.session_state.feasibility_score = st.text_input("Feasibility score", value=st.session_state.feasibility_score)
             st.session_state.marketability_score = st.text_input("Marketability score", value=st.session_state.marketability_score)
