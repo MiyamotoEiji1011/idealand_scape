@@ -214,7 +214,7 @@ with col2:
 
     elif page == "setting":
             st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
-            st.selectbox('地域を選択してください', ['東京', '大阪', '名古屋'])
+            selected_region = st.selectbox('地域を選択してください', ['東京', '大阪', '名古屋'])
             st.session_state.novelty_score = st.text_input("Novelty score", value=st.session_state.novelty_score)
             st.session_state.feasibility_score = st.text_input("Feasibility score", value=st.session_state.feasibility_score)
             st.session_state.marketability_score = st.text_input("Marketability score", value=st.session_state.marketability_score)
