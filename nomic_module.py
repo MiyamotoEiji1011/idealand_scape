@@ -214,7 +214,7 @@ def add_best_ideas(df_master, df_topics, df_data, n, f, m):
         pd.to_numeric(df_data.get(m, 0), errors="coerce").fillna(0.0)
     )
 
-    # ---- テキスト列候補（必要に応じて拡張可能）
+    # ---- テキスト列候補
     title_candidates = ["title", "タイトル", "idea_title", "name", "document_title", "node_title"]
     summary_candidates = ["summary", "要約", "概要", "説明", "content_summary", "description"]
     category_candidates = ["category", "カテゴリー", "カテゴリ", "アイデアカテゴリー", "タグ", "label"]
@@ -223,7 +223,7 @@ def add_best_ideas(df_master, df_topics, df_data, n, f, m):
     summary_col = _first_existing_col(df_data, summary_candidates)
     category_col = _first_existing_col(df_data, category_candidates)
 
-    # ---- 出力列の初期化（型を正しく設定）
+    # ---- 出力列の初期化（正しい型で）
     for col in ["アイデア名", "Summary", "カテゴリー"]:
         df_master[col] = ""
     for col in ["合計スコア", "新規性スコア", "市場性スコア", "実現性スコア"]:
@@ -251,19 +251,14 @@ def add_best_ideas(df_master, df_topics, df_data, n, f, m):
         df_master.at[idx, "Summary"] = str(best[summary_col]) if summary_col else ""
         df_master.at[idx, "カテゴリー"] = str(best[category_col]) if category_col else ""
 
-        # 数値列（型安全に float 変換）
-        df_master.at[idx, "合計スコア"] = float(best.get("total_score", 0.0))
-        df_master.at[idx, "新規性スコア"] = float(
-            pd.to_numeric(best.get(n, 0), errors="coerce").fillna(0.0)
-        )
-        df_master.at[idx, "市場性スコア"] = float(
-            pd.to_numeric(best.get(m, 0), errors="coerce").fillna(0.0)
-        )
-        df_master.at[idx, "実現性スコア"] = float(
-            pd.to_numeric(best.get(f, 0), errors="coerce").fillna(0.0)
-        )
+        # 数値列（単一値なので fillna 不要）
+        df_master.at[idx, "合計スコア"]   = float(best.get("total_score", 0.0))
+        df_master.at[idx, "新規性スコア"] = float(pd.to_numeric(best.get(n, 0), errors="coerce"))
+        df_master.at[idx, "市場性スコア"] = float(pd.to_numeric(best.get(m, 0), errors="coerce"))
+        df_master.at[idx, "実現性スコア"] = float(pd.to_numeric(best.get(f, 0), errors="coerce"))
 
     return df_master
+
 
 # ==============================
 # 🔹 メイン統合処理
