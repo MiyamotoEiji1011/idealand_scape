@@ -144,16 +144,21 @@ def add_excellent_ideas(df_master, df_topics, df_data,n,f,m):
     return df_master
 
 
-def add_detailed_scores(df_master, df_topics, df_data):
-    """スコア別(4点以上)の平均・件数・比率を追加"""
-    score_types = {
-        "novelty_score": "新規性",
-        "marketability_score": "市場性",
-        "feasibility_score": "実現可能性"
+def add_detailed_scores(df_master, df_topics, df_data, n, f, m):
+    """スコア別(4点以上)の平均・件数・比率を追加（列名ゆらぎ対応版）"""
+
+    # UIの列見出しは従来のまま（左が出力のラベル、右が実データの列名）
+    score_map = {
+        "novelty_score":       {"label": "新規性",     "col": n},
+        "marketability_score": {"label": "市場性",     "col": m},
+        "feasibility_score":   {"label": "実現可能性", "col": f},
     }
 
-    for key, label in score_types.items():
-        mean_col = f"{key}({label})\n平均スコア"
+    for key, meta in score_map.items():
+        label = meta["label"]
+        col   = meta["col"]  # ←実データ側で使う列名（n/f/mのいずれか）
+
+        mean_col  = f"{key}({label})\n平均スコア"
         count_col = f"{key}({label})\n優秀アイデア数(4点以上)"
         ratio_col = f"{key}({label})\n優秀アイデア比率(4点以上)"
 
@@ -170,24 +175,22 @@ def add_detailed_scores(df_master, df_topics, df_data):
                 continue
 
             df_sub = df_data[df_data["row_number"].isin(df_topics.loc[mask, "row_number"])]
-            if df_sub.empty:
+            if df_sub.empty or col not in df_sub.columns:
                 continue
 
-            mean_score = df_sub[key].mean()
-            df_master.at[idx, mean_col] = round(mean_score, 2)
-            excellent_count = (df_sub[key] >= 4).sum()
-            ratio = (excellent_count / len(df_sub) * 100) if len(df_sub) > 0 else 0
+            s = pd.to_numeric(df_sub[col], errors="coerce").fillna(0.0)
+            df_master.at[idx, mean_col] = round(s.mean(), 2)
+            excellent_count = (s >= 4).sum()
+            ratio = (excellent_count / len(s) * 100) if len(s) > 0 else 0
             df_master.at[idx, count_col] = int(excellent_count)
             df_master.at[idx, ratio_col] = f"{round(ratio, 1)}%"
     return df_master
 
-
-def add_best_ideas(df_master, df_topics, df_data,n,f,m):
-    """トピックごとの最優秀アイデアを抽出"""
+def add_best_ideas(df_master, df_topics, df_data, n, f, m):
     df_data["total_score"] = (
-        df_data[n] +
-        df_data[f] +
-        df_data[m]
+        pd.to_numeric(df_data[n], errors="coerce").fillna(0.0) +
+        pd.to_numeric(df_data[f], errors="coerce").fillna(0.0) +
+        pd.to_numeric(df_data[m], errors="coerce").fillna(0.0)
     )
 
     for col in ["アイデア名","Summary","カテゴリー","合計スコア","新規性スコア","市場性スコア","実現性スコア"]:
@@ -206,14 +209,15 @@ def add_best_ideas(df_master, df_topics, df_data,n,f,m):
             continue
 
         best = df_sub.sort_values(by="total_score", ascending=False).iloc[0]
-        df_master.at[idx, "アイデア名"] = best.get("title", "")
-        df_master.at[idx, "Summary"] = best.get("summary", "")
-        df_master.at[idx, "カテゴリー"] = best.get("category", "")
-        df_master.at[idx, "合計スコア"] = best.get("total_score", 0)
-        df_master.at[idx, "新規性スコア"] = best.get("novelty_score", 0)
-        df_master.at[idx, "市場性スコア"] = best.get("marketability_score", 0)
-        df_master.at[idx, "実現性スコア"] = best.get("feasibility_score", 0)
+        df_master.at[idx, "アイデア名"]   = best.get("title", "")
+        df_master.at[idx, "Summary"]     = best.get("summary", "")
+        df_master.at[idx, "カテゴリー"]   = best.get("category", "")
+        df_master.at[idx, "合計スコア"]   = float(best.get("total_score", 0))
+        df_master.at[idx, "新規性スコア"] = float(best.get(n, 0))
+        df_master.at[idx, "市場性スコア"] = float(best.get(m, 0))
+        df_master.at[idx, "実現性スコア"] = float(best.get(f, 0))
     return df_master
+
 
 
 # ==============================
@@ -226,6 +230,6 @@ def prepare_master_dataframe(df_meta, df_topics, df_data,n,f,m):
     df_master = add_item_count(df_master, df_topics)
     df_master = add_average_scores(df_master, df_topics, df_data,n,f,m)
     df_master = add_excellent_ideas(df_master, df_topics, df_data,n,f,m)
-    df_master = add_detailed_scores(df_master, df_topics, df_data)
+    df_master = add_detailed_scores(df_master, df_topics, df_data, n, f, m)
     df_master = add_best_ideas(df_master, df_topics, df_data,n,f,m)
     return df_master
