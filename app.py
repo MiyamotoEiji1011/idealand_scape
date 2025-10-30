@@ -240,16 +240,6 @@ with col2:
         marketability_default = st.session_state.get("marketability_score", options_marketability[0])
 
         # ---------------------------
-        # 各 selectbox に「value」パラメータを指定して保持
-        # ---------------------------
-        title_selected = st.selectbox('Title', options_title, key='title_select', index=options_title.index(title_default) if title_default in options_title else 0)
-        summary_selected = st.selectbox('Summary', options_summary, key='summary_select', index=options_summary.index(summary_default) if summary_default in options_summary else 0)
-        category_selected = st.selectbox('Category', options_category, key='category_select', index=options_category.index(category_default) if category_default in options_category else 0)
-        novelty_score_selected = st.selectbox('Novelty score', options_novelty, key='novelty_select', index=options_novelty.index(novelty_default) if novelty_default in options_novelty else 0)
-        feasibility_score_selected = st.selectbox('Feasibility score', options_feasibility, key='feasibility_select', index=options_feasibility.index(feasibility_default) if feasibility_default in options_feasibility else 0)
-        marketability_score_selected = st.selectbox('Marketability score', options_marketability, key='marketability_select', index=options_marketability.index(marketability_default) if marketability_default in options_marketability else 0)
-
-        # ---------------------------
         # 「その他」を選んだ場合のみ自由入力を表示
         # ---------------------------
         title_selected = st.selectbox('Title', options_title, key='title_select', index=options_title.index(title_default) if title_default in options_title else 0)
