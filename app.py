@@ -252,6 +252,7 @@ with col2:
         # ---------------------------
         # 「その他」を選んだ場合のみ自由入力を表示
         # ---------------------------
+        title_selected = st.selectbox('Title', options_title, key='title_select', index=options_title.index(title_default) if title_default in options_title else 0)
         if title_selected == 'その他':
             custom_title = st.text_input('Title parameter', value=st.session_state.get("title_custom", ""), key='title_custom')
             title_value = custom_title if custom_title else None
@@ -259,6 +260,7 @@ with col2:
             title_value = title_selected
         st.session_state.title = title_value
 
+        summary_selected = st.selectbox('Summary', options_summary, key='summary_select', index=options_summary.index(summary_default) if summary_default in options_summary else 0)
         if summary_selected == 'その他':
             custom_summary = st.text_input('Summary parameter', value=st.session_state.get("summary_custom", ""), key='summary_custom')
             summary_value = custom_summary if custom_summary else None
@@ -266,6 +268,7 @@ with col2:
             summary_value = summary_selected
         st.session_state.summary = summary_value
 
+        category_selected = st.selectbox('Category', options_category, key='category_select', index=options_category.index(category_default) if category_default in options_category else 0)
         if category_selected == 'その他':
             custom_category = st.text_input('Category parameter', value=st.session_state.get("category_custom", ""), key='category_custom')
             category_value = custom_category if custom_category else None
@@ -273,6 +276,7 @@ with col2:
             category_value = category_selected
         st.session_state.category = category_value
 
+        novelty_score_selected = st.selectbox('Novelty score', options_novelty, key='novelty_select', index=options_novelty.index(novelty_default) if novelty_default in options_novelty else 0)
         if novelty_score_selected == 'その他':
             custom_novelty = st.text_input('Novelty parameter', value=st.session_state.get("novelty_custom", ""), key='novelty_custom')
             novelty_value = custom_novelty if custom_novelty else None
@@ -280,6 +284,7 @@ with col2:
             novelty_value = novelty_score_selected
         st.session_state.novelty_score = novelty_value
 
+        feasibility_score_selected = st.selectbox('Feasibility score', options_feasibility, key='feasibility_select', index=options_feasibility.index(feasibility_default) if feasibility_default in options_feasibility else 0)
         if feasibility_score_selected == 'その他':
             custom_feasibility = st.text_input('Feasibility parameter', value=st.session_state.get("feasibility_custom", ""), key='feasibility_custom')
             feasibility_value = custom_feasibility if custom_feasibility else None
@@ -287,6 +292,7 @@ with col2:
             feasibility_value = feasibility_score_selected
         st.session_state.feasibility_score = feasibility_value
 
+        marketability_score_selected = st.selectbox('Marketability score', options_marketability, key='marketability_select', index=options_marketability.index(marketability_default) if marketability_default in options_marketability else 0)
         if marketability_score_selected == 'その他':
             custom_marketability = st.text_input('Marketability parameter', value=st.session_state.get("marketability_custom", ""), key='marketability_custom')
             marketability_value = custom_marketability if custom_marketability else None
