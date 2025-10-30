@@ -40,7 +40,10 @@ default_state = {
     "setting_category_col": "",
     "novelty_score":"novelty_score",
     "feasibility_score":"feasibility_score",
-    "marketability_score":"marketability_score"
+    "marketability_score":"marketability_score",
+    "title":"title",
+    "summary":"summary",
+    "category":"category"
 
 }
 
@@ -182,7 +185,10 @@ with col2:
                 st.session_state.nomic_map_url,
                 st.session_state.novelty_score,
                 st.session_state.feasibility_score,
-                st.session_state.marketability_score
+                st.session_state.marketability_score,
+                st.session_state.title,
+                st.session_state.summary,
+                st.session_state.category
             )
 
             with open("./design/defalte.json", "r", encoding="utf-8") as f:
@@ -213,22 +219,70 @@ with col2:
             st.dataframe(st.session_state.df_master.head(20))
 
     elif page == "setting":
-            st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
-            options = ['東京', '大阪', '名古屋', 'その他']
+        st.markdown("<h2>Setting</h2>", unsafe_allow_html=True)
 
-            selected = st.selectbox('地域を選択してください', options)
+        # 各パラメータの選択肢リストを定義
+        options_title = ['title', 'タイトル', 'その他']
+        options_summary = ['summary', '概要', 'その他']
+        options_category = ['category','アイデアカテゴリー', 'その他']
+        options_novelty = ['novelty_score', '新規性スコア', 'novelty_score_', 'その他']
+        options_feasibility = ['feasibility_score', '実現可能性スコア', 'feasibility_score_', 'その他']
+        options_marketability = ['marketability_score', '市場性スコア', 'marketability_score_', 'その他']
 
-            if selected == 'その他':
-                custom_region = st.text_input('地域名を入力してください')
-                region = custom_region if custom_region else None
-            else:
-                region = selected
+        # ---------------------------
+        # 各項目の selectbox
+        # ---------------------------
+        title_selected = st.selectbox('Title', options_title, key='title_select')
+        summary_selected = st.selectbox('Summary', options_summary, key='summary_select')
+        category_selected = st.selectbox('Category', options_category, key='category_select')
+        novelty_score_selected = st.selectbox('Novelty score', options_novelty, key='novelty_select')
+        feasibility_score_selected = st.selectbox('Feasibility score', options_feasibility, key='feasibility_select')
+        marketability_score_selected = st.selectbox('Marketability score', options_marketability, key='marketability_select')
 
-            st.write('選択された地域:', region)
-            
-            st.session_state.novelty_score = st.text_input("Novelty score", value=st.session_state.novelty_score)
-            st.session_state.feasibility_score = st.text_input("Feasibility score", value=st.session_state.feasibility_score)
-            st.session_state.marketability_score = st.text_input("Marketability score", value=st.session_state.marketability_score)
+        # ---------------------------
+        # 自由入力対応（各項目で "その他" 選択時）
+        # ---------------------------
+        if title_selected == 'その他':
+            custom_title = st.text_input('Title parameter', key='title_custom')
+            title_value = custom_title if custom_title else None
+        else:
+            title_value = title_selected
+        st.session_state.title = title_value
+
+        if summary_selected == 'その他':
+            custom_summary = st.text_input('Summary parameter', key='summary_custom')
+            summary_value = custom_summary if custom_summary else None
+        else:
+            summary_value = summary_selected
+        st.session_state.summary = summary_value
+
+        if category_selected == 'その他':
+            custom_category = st.text_input('Category parameter', key='category_custom')
+            category_value = custom_category if custom_category else None
+        else:
+            category_value = category_selected
+        st.session_state.category = category_value
+
+        if novelty_score_selected == 'その他':
+            custom_novelty = st.text_input('Novelty parameter', key='novelty_custom')
+            novelty_value = custom_novelty if custom_novelty else None
+        else:
+            novelty_value = novelty_score_selected
+        st.session_state.novelty_score = novelty_value
+
+        if feasibility_score_selected == 'その他':
+            custom_feasibility = st.text_input('Feasibility parameter', key='feasibility_custom')
+            feasibility_value = custom_feasibility if custom_feasibility else None
+        else:
+            feasibility_value = feasibility_score_selected
+        st.session_state.feasibility_score = feasibility_value
+
+        if marketability_score_selected == 'その他':
+            custom_marketability = st.text_input('Marketability parameter', key='marketability_custom')
+            marketability_value = custom_marketability if custom_marketability else None
+        else:
+            marketability_value = marketability_score_selected
+        st.session_state.marketability_score = marketability_value
 
 # ===================================
 # 外部CSSを読み込む
