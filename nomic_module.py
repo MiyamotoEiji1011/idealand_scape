@@ -185,7 +185,7 @@ def add_detailed_scores(df_master, df_topics, df_data):
 def add_best_ideas(df_master, df_topics, df_data):
     """トピックごとの最優秀アイデアを抽出"""
     df_data["total_score"] = (
-        df_data["novelty_score"] +
+        df_data["市場性スコア"] +
         df_data["feasibility_score"] +
         df_data["marketability_score"]
     )
