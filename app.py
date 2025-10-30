@@ -188,7 +188,7 @@ with col2:
                 st.session_state.marketability_score,
                 st.session_state.title,
                 st.session_state.summary,
-                st.session_state.category
+                st.session_state.category,
             )
 
             with open("./design/defalte.json", "r", encoding="utf-8") as f:
