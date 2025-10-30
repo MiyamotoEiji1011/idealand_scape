@@ -51,6 +51,20 @@ def get_map_data(map_data):
     return df_metadata, df_topics, df_data
 
 
+
+def numcol(df: pd.DataFrame, col: str) -> pd.Series:
+    """
+    列 col を float 数値として安全に返す。
+    - 列がなければ 0.0 を返す
+    - Categorical/文字/混在でも to_numeric で数値化し NaN→0.0
+    """
+    if col not in df.columns:
+        return pd.Series(0.0, index=df.index, dtype="float64")
+    s = df[col]
+    # カテゴリ列でも安全に数値化
+    s = pd.to_numeric(s, errors="coerce")
+    return s.fillna(0.0).astype("float64")
+
 # ==============================
 # 🔹 マスターデータ生成関数群
 # ==============================
@@ -81,8 +95,7 @@ def add_item_count(df_master, df_topics):
     return df_master
 
 
-def add_average_scores(df_master, df_topics, df_data,n,f,m):
-    """各トピックの平均スコア計算"""
+def add_average_scores(df_master, df_topics, df_data, n, f, m):
     df_master["平均スコア"] = 0.0
     df_master["新規性平均スコア"] = 0.0
     df_master["市場性平均スコア"] = 0.0
@@ -102,22 +115,22 @@ def add_average_scores(df_master, df_topics, df_data,n,f,m):
         if df_sub.empty:
             continue
 
-        total_score = (
-            df_sub[n] +
-            df_sub[f] +
-            df_sub[m]
-        )
+        a = numcol(df_sub, n)
+        b = numcol(df_sub, f)
+        c = numcol(df_sub, m)
+        total_score = a + b + c
+
         df_master.at[idx, "平均スコア"] = round(total_score.mean(), 2)
-        df_master.at[idx, "新規性平均スコア"] = round(df_sub[n].mean(), 2)
-        df_master.at[idx, "市場性平均スコア"] = round(df_sub[m].mean(), 2)
-        df_master.at[idx, "実現性平均スコア"] = round(df_sub[f].mean(), 2)
+        df_master.at[idx, "新規性平均スコア"] = round(a.mean(), 2)
+        df_master.at[idx, "市場性平均スコア"] = round(c.mean(), 2)
+        df_master.at[idx, "実現性平均スコア"] = round(b.mean(), 2)
     return df_master
 
 
-def add_excellent_ideas(df_master, df_topics, df_data,n,f,m):
-    """優秀アイデア(12点以上)の件数と比率を追加"""
+def add_excellent_ideas(df_master, df_topics, df_data, n, f, m):
     df_master["優秀アイデア数(12点以上)"] = 0
     df_master["優秀アイデアの比率(12点以上)"] = "0%"
+
     for idx, row in df_master.iterrows():
         if row["depth"] == "1":
             mask = df_topics["topic_depth_1"] == row["Nomic Topic: Broad"]
@@ -130,13 +143,13 @@ def add_excellent_ideas(df_master, df_topics, df_data,n,f,m):
         if df_sub.empty:
             continue
 
-        total_score = (
-            df_sub[n] +
-            df_sub[f] +
-            df_sub[m]
-        )
+        a = numcol(df_sub, n)
+        b = numcol(df_sub, f)
+        c = numcol(df_sub, m)
+        total_score = a + b + c
+
         excellent_count = (total_score >= 12).sum()
-        df_master.at[idx, "優秀アイデア数(12点以上)"] = excellent_count
+        df_master.at[idx, "優秀アイデア数(12点以上)"] = int(excellent_count)
 
         idea_count = row["アイデア数"]
         ratio = (excellent_count / idea_count * 100) if idea_count > 0 else 0
@@ -145,9 +158,6 @@ def add_excellent_ideas(df_master, df_topics, df_data,n,f,m):
 
 
 def add_detailed_scores(df_master, df_topics, df_data, n, f, m):
-    """スコア別(4点以上)の平均・件数・比率を追加（列名ゆらぎ対応版）"""
-
-    # UIの列見出しは従来のまま（左が出力のラベル、右が実データの列名）
     score_map = {
         "novelty_score":       {"label": "新規性",     "col": n},
         "marketability_score": {"label": "市場性",     "col": m},
@@ -156,7 +166,7 @@ def add_detailed_scores(df_master, df_topics, df_data, n, f, m):
 
     for key, meta in score_map.items():
         label = meta["label"]
-        col   = meta["col"]  # ←実データ側で使う列名（n/f/mのいずれか）
+        col   = meta["col"]
 
         mean_col  = f"{key}({label})\n平均スコア"
         count_col = f"{key}({label})\n優秀アイデア数(4点以上)"
@@ -174,17 +184,19 @@ def add_detailed_scores(df_master, df_topics, df_data, n, f, m):
             else:
                 continue
 
-            df_sub = df_data[df_data["row_number"].isin(df_topics.loc[mask, "row_number"])]
+            rows = df_topics.loc[mask, "row_number"]
+            df_sub = df_data[df_data["row_number"].isin(rows)]
             if df_sub.empty or col not in df_sub.columns:
                 continue
 
-            s = pd.to_numeric(df_sub[col], errors="coerce").fillna(0.0)
+            s = numcol(df_sub, col)
             df_master.at[idx, mean_col] = round(s.mean(), 2)
             excellent_count = (s >= 4).sum()
             ratio = (excellent_count / len(s) * 100) if len(s) > 0 else 0
             df_master.at[idx, count_col] = int(excellent_count)
             df_master.at[idx, ratio_col] = f"{round(ratio, 1)}%"
     return df_master
+
 
 def _first_existing_col(df, candidates):
     for c in candidates:
@@ -193,29 +205,31 @@ def _first_existing_col(df, candidates):
     return None
 
 def add_best_ideas(df_master, df_topics, df_data, n, f, m):
-    # ---- 合計スコア（型安全）
+    """トピックごとの最優秀アイデアを抽出（列名ゆらぎ＆型安全対応版）"""
+
+    # ---- 合計スコア（型安全に計算）
     df_data["total_score"] = (
         pd.to_numeric(df_data.get(n, 0), errors="coerce").fillna(0.0) +
         pd.to_numeric(df_data.get(f, 0), errors="coerce").fillna(0.0) +
         pd.to_numeric(df_data.get(m, 0), errors="coerce").fillna(0.0)
     )
 
-    # ---- 文字列系列の候補（必要なら増やしてOK）
-    title_candidates   = ["title", "タイトル", "idea_title", "name", "document_title", "node_title"]
-    summary_candidates = ["summary", "要約", "概要", "説明"]
-    category_candidates= ["category", "カテゴリー", "アイデアカテゴリー"]
+    # ---- テキスト列候補（必要に応じて拡張可能）
+    title_candidates = ["title", "タイトル", "idea_title", "name", "document_title", "node_title"]
+    summary_candidates = ["summary", "要約", "概要", "説明", "content_summary", "description"]
+    category_candidates = ["category", "カテゴリー", "カテゴリ", "アイデアカテゴリー", "タグ", "label"]
 
-    title_col    = _first_existing_col(df_data, title_candidates)
-    summary_col  = _first_existing_col(df_data, summary_candidates)
+    title_col = _first_existing_col(df_data, title_candidates)
+    summary_col = _first_existing_col(df_data, summary_candidates)
     category_col = _first_existing_col(df_data, category_candidates)
 
-    # ---- 出力列の型を最初から正しい型で初期化（FutureWarning回避）
+    # ---- 出力列の初期化（型を正しく設定）
     for col in ["アイデア名", "Summary", "カテゴリー"]:
         df_master[col] = ""
     for col in ["合計スコア", "新規性スコア", "市場性スコア", "実現性スコア"]:
         df_master[col] = 0.0
 
-    # ---- 以降は通常処理
+    # ---- 各トピックに対して最優秀アイデアを抽出
     for idx, row in df_master.iterrows():
         if row["depth"] == "1":
             mask = (df_topics["topic_depth_1"] == row["Nomic Topic: Broad"])
@@ -229,20 +243,27 @@ def add_best_ideas(df_master, df_topics, df_data, n, f, m):
         if df_sub.empty:
             continue
 
+        # total_score の最大値の行を取得
         best = df_sub.sort_values(by="total_score", ascending=False).iloc[0]
 
-        # 見つかった列だけ使う（無ければ空文字）
+        # テキスト列（存在すれば取得）
         df_master.at[idx, "アイデア名"] = str(best[title_col]) if title_col else ""
-        df_master.at[idx, "Summary"]   = str(best[summary_col]) if summary_col else ""
+        df_master.at[idx, "Summary"] = str(best[summary_col]) if summary_col else ""
         df_master.at[idx, "カテゴリー"] = str(best[category_col]) if category_col else ""
 
-        df_master.at[idx, "合計スコア"]   = float(best.get("total_score", 0.0))
-        df_master.at[idx, "新規性スコア"] = float(pd.to_numeric(best.get(n, 0), errors="coerce") or 0.0)
-        df_master.at[idx, "市場性スコア"] = float(pd.to_numeric(best.get(m, 0), errors="coerce") or 0.0)
-        df_master.at[idx, "実現性スコア"] = float(pd.to_numeric(best.get(f, 0), errors="coerce") or 0.0)
+        # 数値列（型安全に float 変換）
+        df_master.at[idx, "合計スコア"] = float(best.get("total_score", 0.0))
+        df_master.at[idx, "新規性スコア"] = float(
+            pd.to_numeric(best.get(n, 0), errors="coerce").fillna(0.0)
+        )
+        df_master.at[idx, "市場性スコア"] = float(
+            pd.to_numeric(best.get(m, 0), errors="coerce").fillna(0.0)
+        )
+        df_master.at[idx, "実現性スコア"] = float(
+            pd.to_numeric(best.get(f, 0), errors="coerce").fillna(0.0)
+        )
+
     return df_master
-
-
 
 # ==============================
 # 🔹 メイン統合処理
