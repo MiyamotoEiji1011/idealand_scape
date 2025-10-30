@@ -203,7 +203,7 @@ def add_best_ideas(df_master, df_topics, df_data, n, f, m):
     # ---- 文字列系列の候補（必要なら増やしてOK）
     title_candidates   = ["title", "タイトル", "idea_title", "name", "document_title", "node_title"]
     summary_candidates = ["summary", "要約", "概要", "説明"]
-    category_candidates= ["category", "カテゴリ", "カテゴリー"]
+    category_candidates= ["category", "カテゴリー", "アイデアカテゴリー"]
 
     title_col    = _first_existing_col(df_data, title_candidates)
     summary_col  = _first_existing_col(df_data, summary_candidates)
